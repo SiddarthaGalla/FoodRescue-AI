@@ -10,7 +10,6 @@ from app.core.security import get_password_hash, verify_password, create_access_
 from app.db.mongodb import get_database
 from app.models.user import user_helper
 from app.api.deps import get_current_user, MOCK_USERS_DB
-from bson import ObjectId
 
 router = APIRouter()
 

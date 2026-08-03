@@ -1,7 +1,5 @@
-import os
-from typing import List, Union
+from typing import List
 from pydantic_settings import BaseSettings
-from pydantic import AnyHttpUrl, validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "FoodRescue AI"

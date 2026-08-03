@@ -1,6 +1,5 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
-from bson import ObjectId
+from typing import Dict, Any
 
 def user_helper(user: Dict[str, Any]) -> Dict[str, Any]:
     return {
