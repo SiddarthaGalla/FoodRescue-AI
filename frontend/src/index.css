@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #F8FFF9;
+    --text-primary: #07130A;
+    --text-muted: #4B5563;
+    --card-bg: rgba(255, 255, 255, 0.75);
+    --card-border: rgba(22, 163, 74, 0.12);
+    --glass-shadow: 0 8px 32px 0 rgba(22, 163, 74, 0.08);
+  }
+
+  .dark {
+    --bg-primary: #07130A;
+    --text-primary: #F8FFF9;
+    --text-muted: #9CA3AF;
+    --card-bg: rgba(14, 35, 19, 0.65);
+    --card-border: rgba(74, 222, 128, 0.18);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Glassmorphism Utilities */
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-nav {
+  background: rgba(248, 255, 249, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(22, 163, 74, 0.1);
+}
+
+.dark .glass-nav {
+  background: rgba(7, 19, 10, 0.85);
+  border-bottom: 1px solid rgba(74, 222, 128, 0.15);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  backdrop-filter: blur(8px);
+  transition: all 0.25s ease;
+}
+
+.dark .glass-input {
+  background: rgba(14, 35, 19, 0.5);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  color: #F8FFF9;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: #22C55E;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 94, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 94, 0.6);
+}
+
+/* Mesh Gradient Background */
+.bg-mesh-light {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(220, 252, 231, 0.8) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(187, 247, 208, 0.6) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(220, 252, 231, 0.7) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(209, 250, 229, 0.5) 0px, transparent 50%);
+}
+
+.dark .bg-mesh-dark {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(20, 83, 45, 0.4) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(7, 19, 10, 0.9) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(15, 52, 29, 0.5) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(6, 40, 20, 0.6) 0px, transparent 50%);
+}
