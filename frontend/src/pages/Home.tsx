@@ -95,7 +95,7 @@ export const Home: React.FC = () => {
   ];
 
   return (
-    <div className="relative overflow-hidden bg-mesh-light dark:bg-mesh-dark transition-colors duration-300">
+    <div className="relative min-h-screen overflow-hidden bg-mesh-light dark:bg-mesh-dark transition-colors duration-300">
       
       {/* Hero Section */}
       <section className="relative pt-8 pb-16 lg:pt-16 lg:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -149,7 +149,7 @@ export const Home: React.FC = () => {
             </motion.div>
 
             {/* Quick Metrics */}
-            <motion.div variants={slideUp} className="pt-6 border-t border-gray-200 dark:border-gray-800 grid grid-cols-3 gap-3 sm:gap-6">
+            <motion.div variants={slideUp} className="pt-6 border-t border-gray-200 dark:border-gray-800/80 grid grid-cols-3 gap-3 sm:gap-6">
               <div>
                 <p className="text-xl sm:text-2xl font-black text-brand-700 dark:text-brand-400">99.4%</p>
                 <p className="text-[11px] sm:text-xs font-black text-gray-800 dark:text-gray-200">Match Accuracy</p>
@@ -192,7 +192,7 @@ export const Home: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-brand-500/10 dark:bg-brand-950/40 border border-brand-500/30 space-y-2">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-brand-500/10 dark:bg-brand-950/50 border border-brand-500/30 space-y-2">
                 <div className="flex justify-between text-xs font-black text-gray-900 dark:text-white">
                   <span>Logistics Route Optimization</span>
                   <span className="text-brand-700 dark:text-brand-400">98% Efficient</span>
@@ -213,30 +213,28 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Stats Counter Section */}
-      <section className="py-10 sm:py-12 bg-brand-500/10 dark:bg-brand-950/30 border-y border-brand-500/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {stats.map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={idx}
-                  whileHover="hover"
-                  variants={cardHover}
-                  className="p-5 sm:p-6 rounded-2xl glass-card border border-brand-500/20 flex items-center gap-4"
-                >
-                  <div className="w-11 sm:w-12 h-11 sm:h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-glow flex-shrink-0">
-                    <Icon className="w-5 sm:w-6 h-5 sm:h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{stat.value}</h3>
-                    <p className="text-xs font-black text-gray-800 dark:text-gray-100">{stat.label}</p>
-                    <p className="text-[10px] text-brand-700 dark:text-brand-400 font-black mt-0.5">{stat.change}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+      <section className="py-10 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {stats.map((stat, idx) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={idx}
+                whileHover="hover"
+                variants={cardHover}
+                className="p-5 sm:p-6 rounded-3xl glass-card border border-brand-500/20 flex items-center gap-4"
+              >
+                <div className="w-11 sm:w-12 h-11 sm:h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-glow flex-shrink-0">
+                  <Icon className="w-5 sm:w-6 h-5 sm:h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{stat.value}</h3>
+                  <p className="text-xs font-black text-gray-800 dark:text-gray-100">{stat.label}</p>
+                  <p className="text-[10px] text-brand-700 dark:text-brand-400 font-black mt-0.5">{stat.change}</p>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
@@ -281,30 +279,28 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Step by Step How It Works with Photos */}
-      <section className="py-16 sm:py-20 bg-gradient-to-b from-transparent via-brand-500/10 dark:via-brand-950/40 to-transparent border-t border-brand-500/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-2 sm:space-y-3">
-            <h2 className="text-xs font-black uppercase tracking-widest text-brand-700 dark:text-brand-400">Workflow</h2>
-            <h3 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">Seamless 4-Step Redistribution</h3>
-          </div>
+      <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-2 sm:space-y-3">
+          <h2 className="text-xs font-black uppercase tracking-widest text-brand-700 dark:text-brand-400">Workflow</h2>
+          <h3 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">Seamless 4-Step Redistribution</h3>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {steps.map((s, idx) => (
-              <div key={idx} className="rounded-3xl glass-card border border-brand-500/20 overflow-hidden space-y-3 p-4">
-                <div className="h-32 rounded-2xl overflow-hidden relative">
-                  <img src={s.image} alt={s.title} className="w-full h-full object-cover" />
-                  <span className="absolute top-2 left-2 px-2.5 py-0.5 text-[9px] font-black uppercase rounded-md bg-brand-600 text-white">
-                    {s.role}
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  <span className="text-xs font-black text-brand-700 dark:text-brand-400">STEP {s.step}</span>
-                  <h4 className="text-sm font-black text-gray-900 dark:text-white">{s.title}</h4>
-                  <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed font-bold">{s.desc}</p>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {steps.map((s, idx) => (
+            <div key={idx} className="rounded-3xl glass-card border border-brand-500/20 overflow-hidden space-y-3 p-4">
+              <div className="h-32 rounded-2xl overflow-hidden relative">
+                <img src={s.image} alt={s.title} className="w-full h-full object-cover" />
+                <span className="absolute top-2 left-2 px-2.5 py-0.5 text-[9px] font-black uppercase rounded-md bg-brand-600 text-white">
+                  {s.role}
+                </span>
               </div>
-            ))}
-          </div>
+              <div className="space-y-1.5">
+                <span className="text-xs font-black text-brand-700 dark:text-brand-400">STEP {s.step}</span>
+                <h4 className="text-sm font-black text-gray-900 dark:text-white">{s.title}</h4>
+                <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed font-bold">{s.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
