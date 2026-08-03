@@ -37,18 +37,18 @@ export const DonorDashboard: React.FC = () => {
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-5rem)] bg-mesh-light dark:bg-mesh-dark">
       <Sidebar role="donor" />
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 overflow-y-auto w-full">
+      <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-8 overflow-y-auto w-full">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <span className="px-3 py-1 text-[10px] font-extrabold uppercase rounded-md bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
+            <span className="px-2.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase rounded-md bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
               Donor Portal
             </span>
-            <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mt-1">
+            <h1 className="text-lg sm:text-2xl font-black text-gray-900 dark:text-white mt-1">
               Welcome back, {user?.name || 'Partner Kitchen'}
             </h1>
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <p className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300">
               Manage your food surplus posts, track live volunteer pickups, and download tax reports.
             </p>
           </div>
@@ -64,21 +64,21 @@ export const DonorDashboard: React.FC = () => {
           </motion.button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {/* Stats Grid (2 columns on mobile phone, 4 on desktop) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {stats.map((s, idx) => {
             const Icon = s.icon;
             return (
-              <motion.div key={idx} whileHover="hover" variants={cardHover} className="p-5 sm:p-6 rounded-3xl glass-card border border-brand-500/20 space-y-3">
+              <motion.div key={idx} whileHover="hover" variants={cardHover} className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-brand-500/20 space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-glow">
-                    <Icon className="w-5 h-5" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-glow">
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <span className="text-[10px] font-extrabold text-brand-700 dark:text-brand-400">{s.change}</span>
+                  <span className="text-[9px] sm:text-[10px] font-extrabold text-brand-700 dark:text-brand-400">{s.change}</span>
                 </div>
                 <div>
-                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{s.value}</h3>
-                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{s.title}</p>
+                  <h3 className="text-lg sm:text-2xl font-black text-gray-900 dark:text-white">{s.value}</h3>
+                  <p className="text-[10px] sm:text-xs font-bold text-gray-700 dark:text-gray-300">{s.title}</p>
                 </div>
               </motion.div>
             );
@@ -86,8 +86,8 @@ export const DonorDashboard: React.FC = () => {
         </div>
 
         {/* Active Rescue Listings */}
-        <div className="p-4 sm:p-6 rounded-3xl glass-card border border-brand-500/20 space-y-4">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Active Food Rescue Batches</h3>
+        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-brand-500/20 space-y-4">
+          <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">Active Food Rescue Batches</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs min-w-[500px]">
               <thead>
@@ -102,15 +102,15 @@ export const DonorDashboard: React.FC = () => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {activeDonations.map((item) => (
                   <tr key={item.id} className="hover:bg-brand-500/5 transition-colors">
-                    <td className="py-4 font-mono font-bold text-brand-700 dark:text-brand-400">{item.id}</td>
-                    <td className="py-4 font-bold text-gray-900 dark:text-white">{item.item}</td>
-                    <td className="py-4 text-gray-700 dark:text-gray-300 font-medium">{item.qty}</td>
-                    <td className="py-4">
-                      <span className="px-2.5 py-1 text-[10px] font-extrabold uppercase rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
+                    <td className="py-3.5 font-mono font-bold text-brand-700 dark:text-brand-400">{item.id}</td>
+                    <td className="py-3.5 font-bold text-gray-900 dark:text-white">{item.item}</td>
+                    <td className="py-3.5 text-gray-700 dark:text-gray-300 font-medium">{item.qty}</td>
+                    <td className="py-3.5">
+                      <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
                         {item.status}
                       </span>
                     </td>
-                    <td className="py-4 font-semibold text-gray-700 dark:text-gray-300">{item.driver}</td>
+                    <td className="py-3.5 font-semibold text-gray-700 dark:text-gray-300">{item.driver}</td>
                   </tr>
                 ))}
               </tbody>
@@ -123,8 +123,8 @@ export const DonorDashboard: React.FC = () => {
       {/* Post Donation Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-lg p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Post New Food Surplus Batch</h3>
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-lg p-5 sm:p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl space-y-4">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Post New Food Surplus Batch</h3>
             <form onSubmit={handleCreateDonation} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Food Item Name / Description</label>
