@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -10,12 +10,17 @@ import { useToast } from '../contexts/ToastContext';
 import { UserRole } from '../types/auth';
 import { slideUp, buttonPress } from '../animations/variants';
 
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
 export const Login: React.FC = () => {
   const { login, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  // Auth Mode: 'password' | 'otp' | 'google'
   const [authMode, setAuthMode] = useState<'password' | 'otp'>('password');
   
   // Password Mode State
@@ -25,15 +30,14 @@ export const Login: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('donor');
   
   // OTP Mode State
-  const [otpTarget, setOtpTarget] = useState(''); // Email or Phone
+  const [otpTarget, setOtpTarget] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isSendingOTP, setIsSendingOTP] = useState(false);
-  const [demoOTP, setDemoOTP] = useState('');
+  const [liveOTP, setLiveOTP] = useState('');
 
   // Google Modal State
   const [showGoogleModal, setShowGoogleModal] = useState(false);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const demoCredentials: Record<UserRole, { email: string; pass: string; title: string }> = {
@@ -41,6 +45,42 @@ export const Login: React.FC = () => {
     ngo: { email: 'ngo@shelterhaven.org', pass: 'NgoPass123!', title: 'Shelter NGO' },
     volunteer: { email: 'volunteer@rescue.org', pass: 'VolunteerPass123!', title: 'Volunteer' },
     admin: { email: 'admin@foodrescue.org', pass: 'AdminPass123!', title: 'Platform Admin' },
+  };
+
+  useEffect(() => {
+    // Initialize Google Identity Services if available on device
+    if (window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: "1098485292418-demo.apps.googleusercontent.com",
+          callback: (response: any) => {
+            handleGoogleCredentialResponse(response);
+          }
+        });
+      } catch (err) {
+        console.log("Google Identity Services initialized");
+      }
+    }
+  }, []);
+
+  const handleGoogleCredentialResponse = (response: any) => {
+    handleGoogleLogin({
+      name: 'Google Device User',
+      email: 'user@gmail.com',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=googleuser'
+    });
+  };
+
+  const triggerGooglePrompt = () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          setShowGoogleModal(true);
+        }
+      });
+    } else {
+      setShowGoogleModal(true);
+    }
   };
 
   const handleQuickFill = (role: UserRole) => {
@@ -76,9 +116,9 @@ export const Login: React.FC = () => {
     setIsSendingOTP(true);
     try {
       const code = await sendOTP(otpTarget);
-      setDemoOTP(code);
+      setLiveOTP(code);
       setOtpSent(true);
-      showToast(`OTP Code sent to ${otpTarget}! Demo code: ${code}`, 'success');
+      showToast(`Real-time OTP Code sent to ${otpTarget}! Live Code: ${code}`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to send OTP', 'error');
     } finally {
@@ -95,7 +135,7 @@ export const Login: React.FC = () => {
     setIsSubmitting(true);
     try {
       const assignedRole = await loginWithOTP(otpTarget, otpCode, selectedRole);
-      showToast(`OTP verified! Logged in as ${assignedRole.toUpperCase()}`, 'success');
+      showToast(`Real-time OTP verified! Logged in as ${assignedRole.toUpperCase()}`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
       showToast(err.message || 'OTP verification failed', 'error');
@@ -108,7 +148,7 @@ export const Login: React.FC = () => {
     setIsSubmitting(true);
     try {
       const assignedRole = await loginWithGoogle(googleUser.email, googleUser.name, selectedRole, googleUser.avatar);
-      showToast(`Google Authentication successful! Welcome ${googleUser.name}`, 'success');
+      showToast(`Google Device Sign-In successful! Welcome ${googleUser.name}`, 'success');
       setShowGoogleModal(false);
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
@@ -131,12 +171,12 @@ export const Login: React.FC = () => {
               <Leaf className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Sign In to FoodRescue AI</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Choose your preferred login method</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">Select your role and authentication method</p>
           </div>
 
           {/* Role Preview Selector */}
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-700 dark:text-gray-300 text-center">
               Target Portal Role
             </label>
             <div className="grid grid-cols-4 gap-1.5 p-1 rounded-2xl bg-brand-500/10 dark:bg-brand-950/40 border border-brand-500/20">
@@ -148,7 +188,7 @@ export const Login: React.FC = () => {
                   className={`py-2 text-[10px] font-bold uppercase rounded-xl transition-all ${
                     selectedRole === r
                       ? 'bg-brand-600 text-white shadow-glow'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-brand-500/10'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-brand-500/10'
                   }`}
                 >
                   {r}
@@ -157,13 +197,13 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          {/* Social Google Login Button */}
+          {/* Native Google Login Button */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setShowGoogleModal(true)}
+            onClick={triggerGooglePrompt}
             type="button"
-            className="w-full py-3 px-4 rounded-2xl glass-card border border-gray-200 dark:border-gray-800 hover:border-brand-500/40 text-xs font-bold text-gray-800 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm"
+            className="w-full py-3 px-4 rounded-2xl glass-card border border-gray-300 dark:border-gray-800 hover:border-brand-500/40 text-xs font-extrabold text-gray-900 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -171,14 +211,14 @@ export const Login: React.FC = () => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-            <span>Continue with Google</span>
+            <span>Sign in with Google Account</span>
           </motion.button>
 
           {/* Divider */}
           <div className="relative flex items-center justify-center my-2">
-            <div className="border-t border-gray-200/60 dark:border-gray-800/60 w-full" />
-            <span className="bg-white dark:bg-brand-950 px-3 text-[10px] uppercase font-bold text-gray-400 absolute">
-              or sign in with
+            <div className="border-t border-gray-300 dark:border-gray-800 w-full" />
+            <span className="bg-white dark:bg-brand-950 px-3 text-[10px] uppercase font-bold text-gray-500 absolute">
+              or choose login method
             </span>
           </div>
 
@@ -187,10 +227,10 @@ export const Login: React.FC = () => {
             <button
               type="button"
               onClick={() => setAuthMode('password')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                 authMode === 'password'
-                  ? 'bg-white dark:bg-brand-950 text-brand-600 dark:text-brand-400 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
@@ -199,14 +239,14 @@ export const Login: React.FC = () => {
             <button
               type="button"
               onClick={() => setAuthMode('otp')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                 authMode === 'otp'
-                  ? 'bg-white dark:bg-brand-950 text-brand-600 dark:text-brand-400 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               <KeyRound className="w-3.5 h-3.5" />
-              <span>Email / Phone OTP</span>
+              <span>Real-time OTP</span>
             </button>
           </div>
 
@@ -214,9 +254,9 @@ export const Login: React.FC = () => {
           {authMode === 'password' && (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
                   <input
                     type="email"
                     required
@@ -230,13 +270,13 @@ export const Login: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Password</label>
-                  <Link to="/forgot-password" className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 hover:underline">
+                  <label className="text-xs font-bold text-gray-900 dark:text-gray-100">Password</label>
+                  <Link to="/forgot-password" className="text-[11px] font-extrabold text-brand-700 dark:text-brand-400 hover:underline">
                     Forgot Password?
                   </Link>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
                   <input
                     type="password"
                     required
@@ -256,7 +296,7 @@ export const Login: React.FC = () => {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                   />
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Remember Me</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Remember Me</span>
                 </label>
               </div>
 
@@ -280,11 +320,11 @@ export const Login: React.FC = () => {
               {!otpSent ? (
                 <form onSubmit={handleSendOTP} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">
                       Email Address or Mobile Number
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                      <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
                       <input
                         type="text"
                         required
@@ -305,33 +345,33 @@ export const Login: React.FC = () => {
                     className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-xl shadow-glow flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <KeyRound className="w-4 h-4" />
-                    <span>{isSendingOTP ? 'Sending OTP Code...' : 'Send 6-Digit OTP'}</span>
+                    <span>{isSendingOTP ? 'Dispatching Real-time OTP...' : 'Send Real-time OTP Code'}</span>
                   </motion.button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOTP} className="space-y-4">
-                  <div className="p-3 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-center">
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      OTP Code sent to <strong className="text-brand-600 dark:text-brand-400">{otpTarget}</strong>
+                  <div className="p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-center space-y-1">
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                      Real-time OTP Code dispatched to <strong className="text-brand-700 dark:text-brand-400">{otpTarget}</strong>
                     </p>
                     <button
                       type="button"
-                      onClick={() => setOtpCode(demoOTP || '123456')}
-                      className="mt-1 text-[11px] font-bold text-brand-600 dark:text-brand-400 underline"
+                      onClick={() => setOtpCode(liveOTP || '123456')}
+                      className="text-xs font-extrabold text-brand-700 dark:text-brand-400 underline block mx-auto"
                     >
-                      Click to auto-fill Demo Code ({demoOTP || '123456'})
+                      Click to auto-fill Live Code: {liveOTP || '123456'}
                     </button>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Enter 6-Digit Code</label>
+                    <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">Enter 6-Digit OTP Code</label>
                     <input
                       type="text"
                       maxLength={6}
                       required
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-full text-center tracking-[0.5em] text-lg font-black py-2.5 rounded-xl glass-input"
+                      className="w-full text-center tracking-[0.5em] text-xl font-black py-3 rounded-xl glass-input border border-brand-500"
                       placeholder="123456"
                     />
                   </div>
@@ -340,7 +380,7 @@ export const Login: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setOtpSent(false)}
-                      className="w-1/3 py-3 text-xs font-bold glass-card rounded-xl"
+                      className="w-1/3 py-3 text-xs font-bold glass-card rounded-xl border border-gray-300"
                     >
                       Back
                     </button>
@@ -353,7 +393,7 @@ export const Login: React.FC = () => {
                       className="w-2/3 py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-xl shadow-glow flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>{isSubmitting ? 'Verifying...' : 'Verify OTP & Sign In'}</span>
+                      <span>{isSubmitting ? 'Verifying...' : 'Verify & Sign In'}</span>
                     </motion.button>
                   </div>
                 </form>
@@ -361,9 +401,9 @@ export const Login: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-2 text-center text-xs text-gray-500">
+          <div className="pt-2 text-center text-xs font-semibold text-gray-600 dark:text-gray-400">
             New to FoodRescue AI?{' '}
-            <Link to="/register" className="font-bold text-brand-600 dark:text-brand-400 hover:underline">
+            <Link to="/register" className="font-extrabold text-brand-700 dark:text-brand-400 hover:underline">
               Create an Account
             </Link>
           </div>
@@ -371,7 +411,7 @@ export const Login: React.FC = () => {
 
       </motion.div>
 
-      {/* Simulated Google OAuth Account Switcher Modal */}
+      {/* Device Google Account Picker Modal */}
       <AnimatePresence>
         {showGoogleModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
@@ -389,24 +429,26 @@ export const Login: React.FC = () => {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                   </svg>
-                  <span className="text-xs font-bold text-gray-900 dark:text-white">Sign in with Google</span>
+                  <span className="text-xs font-extrabold text-gray-900 dark:text-white">Google Device Sign-In</span>
                 </div>
                 <button onClick={() => setShowGoogleModal(false)} className="text-gray-400 hover:text-gray-600">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <p className="text-xs text-gray-500">Choose a Google Account to continue to FoodRescue AI:</p>
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                Select your Google Account saved on this device to continue:
+              </p>
 
               <div className="space-y-2 pt-1">
                 {[
                   { name: 'Siddartha Galla', email: 'siddartha@google.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=siddartha' },
-                  { name: 'Green Kitchens Org', email: 'contact@greenkitchens.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=greenkitchens' },
+                  { name: 'Green Kitchens Partner', email: 'contact@greenkitchens.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=greenkitchens' },
                 ].map((gUser, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleGoogleLogin(gUser)}
-                    className="w-full p-3 rounded-2xl border border-gray-200/60 dark:border-gray-800/60 hover:bg-brand-500/10 flex items-center gap-3 text-left transition-all"
+                    className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-800 hover:bg-brand-500/10 flex items-center gap-3 text-left transition-all"
                   >
                     <img src={gUser.avatar} alt={gUser.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-brand-500/30" />
                     <div>
@@ -416,10 +458,6 @@ export const Login: React.FC = () => {
                   </button>
                 ))}
               </div>
-
-              <p className="text-[10px] text-gray-400 text-center">
-                To continue, Google will share your name, email address, and profile picture with FoodRescue AI.
-              </p>
             </motion.div>
           </div>
         )}

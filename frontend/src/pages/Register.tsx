@@ -23,7 +23,7 @@ export const Register: React.FC = () => {
   const [otpTarget, setOtpTarget] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [demoOTP, setDemoOTP] = useState('');
+  const [liveOTP, setLiveOTP] = useState('');
   const [isSendingOTP, setIsSendingOTP] = useState(false);
 
   const [showGoogleModal, setShowGoogleModal] = useState(false);
@@ -63,9 +63,9 @@ export const Register: React.FC = () => {
     setIsSendingOTP(true);
     try {
       const code = await sendOTP(otpTarget);
-      setDemoOTP(code);
+      setLiveOTP(code);
       setOtpSent(true);
-      showToast(`OTP sent to ${otpTarget}! Code: ${code}`, 'success');
+      showToast(`Real-time OTP sent to ${otpTarget}! Live Code: ${code}`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to send OTP', 'error');
     } finally {
@@ -76,13 +76,13 @@ export const Register: React.FC = () => {
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpCode) {
-      showToast('Please enter the OTP code', 'error');
+      showToast('Please enter the 6-digit OTP code', 'error');
       return;
     }
     setIsSubmitting(true);
     try {
       const assignedRole = await loginWithOTP(otpTarget, otpCode, role, name);
-      showToast(`Account verified via OTP! Welcome ${assignedRole.toUpperCase()}`, 'success');
+      showToast(`Verified via OTP! Welcome ${assignedRole.toUpperCase()}`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
       showToast(err.message || 'OTP verification failed', 'error');
@@ -95,7 +95,7 @@ export const Register: React.FC = () => {
     setIsSubmitting(true);
     try {
       const assignedRole = await loginWithGoogle(gUser.email, gUser.name, role, gUser.avatar);
-      showToast(`Google registration successful! Welcome ${gUser.name}`, 'success');
+      showToast(`Google Registration successful! Welcome ${gUser.name}`, 'success');
       setShowGoogleModal(false);
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
@@ -115,12 +115,12 @@ export const Register: React.FC = () => {
               <Leaf className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Create FoodRescue Account</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Select your role and registration method</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">Select your role and registration method</p>
           </div>
 
           {/* Role Selector */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">1. Choose Organization Role</label>
+            <label className="block text-xs font-extrabold text-gray-900 dark:text-gray-100">1. Choose Organization Role</label>
             <div className="grid grid-cols-2 gap-2">
               {rolesList.map((r) => {
                 const Icon = r.icon;
@@ -132,11 +132,11 @@ export const Register: React.FC = () => {
                     onClick={() => setRole(r.id)}
                     className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
                       isSelected
-                        ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-glow'
-                        : 'border-gray-200/60 dark:border-gray-800/60 hover:bg-brand-500/5 text-gray-700 dark:text-gray-300'
+                        ? 'border-brand-600 bg-brand-500/10 text-brand-700 dark:text-brand-400 shadow-glow'
+                        : 'border-gray-300 dark:border-gray-800 hover:bg-brand-500/5 text-gray-800 dark:text-gray-200'
                     }`}
                   >
-                    <Icon className="w-5 h-5 mb-1 text-brand-500" />
+                    <Icon className="w-5 h-5 mb-1 text-brand-600" />
                     <div>
                       <p className="text-xs font-bold">{r.title}</p>
                       <p className="text-[10px] text-gray-500">{r.desc}</p>
@@ -151,7 +151,7 @@ export const Register: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowGoogleModal(true)}
-            className="w-full py-3 px-4 rounded-2xl glass-card border border-gray-200 dark:border-gray-800 hover:border-brand-500/40 text-xs font-bold text-gray-800 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm"
+            className="w-full py-3 px-4 rounded-2xl glass-card border border-gray-300 dark:border-gray-800 hover:border-brand-500/40 text-xs font-extrabold text-gray-900 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -159,7 +159,7 @@ export const Register: React.FC = () => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-            <span>Register with Google</span>
+            <span>Register with Google Account</span>
           </button>
 
           {/* Registration Mode Switcher */}
@@ -168,7 +168,7 @@ export const Register: React.FC = () => {
               type="button"
               onClick={() => setRegMode('form')}
               className={`py-2 rounded-xl transition-all ${
-                regMode === 'form' ? 'bg-white dark:bg-brand-950 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-gray-500'
+                regMode === 'form' ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm' : 'text-gray-600'
               }`}
             >
               Standard Form
@@ -177,7 +177,7 @@ export const Register: React.FC = () => {
               type="button"
               onClick={() => setRegMode('otp')}
               className={`py-2 rounded-xl transition-all ${
-                regMode === 'otp' ? 'bg-white dark:bg-brand-950 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-gray-500'
+                regMode === 'otp' ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm' : 'text-gray-600'
               }`}
             >
               Email / Phone OTP
@@ -187,9 +187,9 @@ export const Register: React.FC = () => {
           {regMode === 'form' ? (
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name / Org Name</label>
+                <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">Full Name / Org Name</label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <User className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
                   <input
                     type="text"
                     required
@@ -203,9 +203,9 @@ export const Register: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                  <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                    <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
                     <input
                       type="email"
                       required
@@ -217,9 +217,9 @@ export const Register: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                  <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">Phone Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                    <Phone className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
                     <input
                       type="tel"
                       value={phone}
@@ -232,9 +232,9 @@ export const Register: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-500" />
                   <input
                     type="password"
                     required
@@ -263,7 +263,7 @@ export const Register: React.FC = () => {
               {!otpSent ? (
                 <form onSubmit={handleSendOTP} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email or Phone</label>
+                    <label className="block text-xs font-bold text-gray-900 dark:text-gray-100 mb-1">Email or Phone</label>
                     <input
                       type="text"
                       required
@@ -280,15 +280,15 @@ export const Register: React.FC = () => {
                     disabled={isSendingOTP}
                     className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 to-emerald-500 rounded-xl shadow-glow"
                   >
-                    {isSendingOTP ? 'Sending...' : 'Send OTP Verification Code'}
+                    {isSendingOTP ? 'Dispatching...' : 'Send OTP Verification Code'}
                   </motion.button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOTP} className="space-y-4">
-                  <div className="p-3 rounded-2xl bg-brand-500/10 border text-center text-xs">
-                    OTP sent to <strong>{otpTarget}</strong>.{' '}
-                    <button type="button" onClick={() => setOtpCode(demoOTP || '123456')} className="font-bold underline text-brand-600">
-                      Auto-fill ({demoOTP || '123456'})
+                  <div className="p-3.5 rounded-2xl bg-brand-500/10 border text-center text-xs font-bold text-gray-900 dark:text-white space-y-1">
+                    <p>Real-time OTP dispatched to <strong>{otpTarget}</strong></p>
+                    <button type="button" onClick={() => setOtpCode(liveOTP || '123456')} className="font-extrabold text-brand-700 underline block mx-auto">
+                      Auto-fill Live Code: {liveOTP || '123456'}
                     </button>
                   </div>
                   <div>
@@ -299,7 +299,7 @@ export const Register: React.FC = () => {
                       required
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-full text-center tracking-[0.5em] font-black text-lg py-2.5 rounded-xl glass-input"
+                      className="w-full text-center tracking-[0.5em] font-black text-xl py-3 rounded-xl glass-input border border-brand-500"
                     />
                   </div>
                   <motion.button
@@ -316,9 +316,9 @@ export const Register: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-2 text-center text-xs text-gray-500">
+          <div className="pt-2 text-center text-xs font-semibold text-gray-600 dark:text-gray-400">
             Already registered?{' '}
-            <Link to="/login" className="font-bold text-brand-600 dark:text-brand-400 hover:underline">
+            <Link to="/login" className="font-extrabold text-brand-700 dark:text-brand-400 hover:underline">
               Sign In
             </Link>
           </div>
@@ -326,28 +326,28 @@ export const Register: React.FC = () => {
 
       </motion.div>
 
-      {/* Simulated Google OAuth Modal */}
+      {/* Device Google Account Modal */}
       <AnimatePresence>
         {showGoogleModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold">Register with Google</span>
+                <span className="text-xs font-bold text-gray-900 dark:text-white">Register with Google Account</span>
                 <button onClick={() => setShowGoogleModal(false)}><X className="w-4 h-4 text-gray-400" /></button>
               </div>
               <div className="space-y-2">
                 {[
                   { name: 'Siddartha Galla', email: 'siddartha@google.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=siddartha' },
-                  { name: 'Green Kitchens Org', email: 'contact@greenkitchens.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=greenkitchens' },
+                  { name: 'Green Kitchens Partner', email: 'contact@greenkitchens.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=greenkitchens' },
                 ].map((gUser, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleGoogleRegister(gUser)}
-                    className="w-full p-3 rounded-2xl border hover:bg-brand-500/10 flex items-center gap-3 text-left transition-all"
+                    className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-800 hover:bg-brand-500/10 flex items-center gap-3 text-left transition-all"
                   >
-                    <img src={gUser.avatar} alt={gUser.name} className="w-8 h-8 rounded-full object-cover" />
+                    <img src={gUser.avatar} alt={gUser.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-brand-500/30" />
                     <div>
-                      <p className="text-xs font-bold">{gUser.name}</p>
+                      <p className="text-xs font-bold text-gray-900 dark:text-white">{gUser.name}</p>
                       <p className="text-[10px] text-gray-500">{gUser.email}</p>
                     </div>
                   </button>

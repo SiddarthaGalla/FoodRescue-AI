@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.user import (
@@ -11,12 +11,9 @@ from app.core.security import get_password_hash, verify_password, create_access_
 from app.db.mongodb import get_database
 from app.models.user import user_helper
 from app.api.deps import get_current_user, MOCK_USERS_DB
+from app.services.otp_service import send_realtime_otp, verify_otp_code
 
 router = APIRouter()
-
-# In-memory OTP store for dev/simulation
-# Key: target (email/phone), Value: {"otp": "123456", "created_at": datetime}
-OTP_STORE: Dict[str, Dict[str, Any]] = {}
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserCreate) -> Any:
@@ -113,36 +110,26 @@ async def login(credentials: UserLogin) -> Any:
 
 @router.post("/send-otp")
 async def send_otp(req: SendOTPRequest) -> Any:
-    # Generate 6-digit OTP (for demo, fixed default 123456 or random)
-    otp_code = "123456"
-    OTP_STORE[req.target] = {
-        "otp": otp_code,
-        "created_at": datetime.utcnow()
-    }
+    otp_code, status_msg = send_realtime_otp(req.target)
     return {
-        "message": f"OTP sent successfully to {req.target}",
-        "demo_otp": otp_code
+        "message": status_msg,
+        "otp": otp_code,
+        "target": req.target,
+        "expires_in_minutes": 5
     }
 
 @router.post("/verify-otp", response_model=Token)
 async def verify_otp(req: VerifyOTPRequest) -> Any:
-    stored = OTP_STORE.get(req.target)
-    # Allow demo OTP '123456' or match stored
-    if not stored and req.otp != "123456":
+    is_valid = verify_otp_code(req.target, req.otp)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OTP expired or not requested. Please click Send OTP.",
-        )
-    if stored and stored["otp"] != req.otp and req.otp != "123456":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid 6-digit OTP code.",
+            detail="Invalid or expired OTP verification code.",
         )
 
     db = get_database()
     found_user = None
 
-    # Check if target is email or phone
     is_email = "@" in req.target
     query = {"email": req.target} if is_email else {"phone": req.target}
 
@@ -161,7 +148,6 @@ async def verify_otp(req: VerifyOTPRequest) -> Any:
     now = datetime.utcnow()
     role_val = req.role.value if req.role else "donor"
 
-    # Create new user via OTP if first time
     if not found_user:
         user_name = req.name or (req.target.split("@")[0] if is_email else f"User {req.target[-4:]}")
         user_doc = {
