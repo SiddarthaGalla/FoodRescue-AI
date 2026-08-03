@@ -95,7 +95,7 @@ export const Home: React.FC = () => {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-mesh-light dark:bg-mesh-dark transition-colors duration-300">
+    <div className="relative min-h-screen overflow-hidden transition-colors duration-300">
       
       {/* Hero Section */}
       <section className="relative pt-8 pb-16 lg:pt-16 lg:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
