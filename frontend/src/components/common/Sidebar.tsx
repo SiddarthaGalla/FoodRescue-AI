@@ -42,43 +42,70 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
   const menus = roleMenus[role] || roleMenus.donor;
 
   return (
-    <aside className="w-64 hidden lg:block glass-card border-r border-brand-500/20 p-6 min-h-[calc(100vh-5rem)] space-y-6">
-      <div>
-        <span className="text-[10px] font-black uppercase tracking-wider text-brand-700 dark:text-brand-400 block mb-2">
-          {role} Workspace
-        </span>
-        <h3 className="text-lg font-black text-gray-900 dark:text-white capitalize">{role} Portal</h3>
-      </div>
+    <>
+      {/* Desktop Sidebar (lg screens) */}
+      <aside className="w-64 hidden lg:block glass-card border-r border-brand-500/20 p-6 min-h-[calc(100vh-5rem)] space-y-6 flex-shrink-0">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-wider text-brand-700 dark:text-brand-400 block mb-1">
+            {role} Workspace
+          </span>
+          <h3 className="text-lg font-black text-gray-900 dark:text-white capitalize">{role} Portal</h3>
+        </div>
 
-      <nav className="space-y-1.5">
-        {menus.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-black transition-all ${
-                isActive
-                  ? 'bg-brand-600 text-white shadow-glow'
-                  : 'text-gray-900 dark:text-gray-100 hover:bg-brand-500/10 hover:text-brand-600'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
-      </nav>
+        <nav className="space-y-1.5">
+          {menus.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-black transition-all ${
+                  isActive
+                    ? 'bg-brand-600 text-white shadow-glow'
+                    : 'text-gray-900 dark:text-gray-100 hover:bg-brand-500/10 hover:text-brand-600'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-3">
-        <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 space-y-1">
-          <p className="text-xs font-black text-gray-900 dark:text-white">Need Support?</p>
-          <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
-            Contact 24/7 AI Dispatch Team directly.
-          </p>
+        <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-3">
+          <div className="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 space-y-1">
+            <p className="text-xs font-black text-gray-900 dark:text-white">Need Support?</p>
+            <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
+              Contact 24/7 AI Dispatch Team directly.
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Top Navigation Bar for Mobile Phones (< lg screens) */}
+      <div className="lg:hidden w-full glass-card border-b border-brand-500/20 px-4 py-3 sticky top-20 z-40 overflow-x-auto">
+        <div className="flex items-center gap-2 min-w-max">
+          {menus.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
+                  isActive
+                    ? 'bg-brand-600 text-white shadow-glow'
+                    : 'text-gray-900 dark:text-gray-100 hover:bg-brand-500/10'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5 text-current" />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
         </div>
       </div>
-    </aside>
+    </>
   );
 };

@@ -34,18 +34,18 @@ export const DonorDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] bg-mesh-light dark:bg-mesh-dark">
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-5rem)] bg-mesh-light dark:bg-mesh-dark">
       <Sidebar role="donor" />
 
-      <main className="flex-1 p-6 md:p-8 space-y-8 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 overflow-y-auto w-full">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <span className="px-3 py-1 text-[10px] font-extrabold uppercase rounded-md bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
               Donor Portal
             </span>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white mt-1">
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mt-1">
               Welcome back, {user?.name || 'Partner Kitchen'}
             </h1>
             <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -57,7 +57,7 @@ export const DonorDashboard: React.FC = () => {
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => setShowModal(true)}
-            className="px-5 py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow flex items-center gap-2"
+            className="w-full sm:w-auto px-5 py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
             <span>Post Food Surplus</span>
@@ -65,11 +65,11 @@ export const DonorDashboard: React.FC = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {stats.map((s, idx) => {
             const Icon = s.icon;
             return (
-              <motion.div key={idx} whileHover="hover" variants={cardHover} className="p-6 rounded-3xl glass-card border border-brand-500/20 space-y-3">
+              <motion.div key={idx} whileHover="hover" variants={cardHover} className="p-5 sm:p-6 rounded-3xl glass-card border border-brand-500/20 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="w-10 h-10 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-glow">
                     <Icon className="w-5 h-5" />
@@ -77,7 +77,7 @@ export const DonorDashboard: React.FC = () => {
                   <span className="text-[10px] font-extrabold text-brand-700 dark:text-brand-400">{s.change}</span>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white">{s.value}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{s.value}</h3>
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{s.title}</p>
                 </div>
               </motion.div>
@@ -86,10 +86,10 @@ export const DonorDashboard: React.FC = () => {
         </div>
 
         {/* Active Rescue Listings */}
-        <div className="p-6 rounded-3xl glass-card border border-brand-500/20 space-y-4">
+        <div className="p-4 sm:p-6 rounded-3xl glass-card border border-brand-500/20 space-y-4">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">Active Food Rescue Batches</h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[500px]">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 font-bold">
                   <th className="pb-3">ID</th>
@@ -128,21 +128,21 @@ export const DonorDashboard: React.FC = () => {
             <form onSubmit={handleCreateDonation} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Food Item Name / Description</label>
-                <input type="text" required placeholder="e.g., Prepared Hot Meals (Pasta & Salad)" className="w-full px-3 py-2 rounded-xl glass-input" />
+                <input type="text" required placeholder="e.g., Prepared Hot Meals (Pasta & Salad)" className="w-full px-3 py-2.5 rounded-xl glass-input" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Quantity (Portions)</label>
-                  <input type="number" required placeholder="120" className="w-full px-3 py-2 rounded-xl glass-input" />
+                  <input type="number" required placeholder="120" className="w-full px-3 py-2.5 rounded-xl glass-input" />
                 </div>
                 <div>
                   <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Expiry Window (Hours)</label>
-                  <input type="number" required placeholder="4" className="w-full px-3 py-2 rounded-xl glass-input" />
+                  <input type="number" required placeholder="4" className="w-full px-3 py-2.5 rounded-xl glass-input" />
                 </div>
               </div>
               <div className="flex gap-2 pt-3">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl glass-card font-bold">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white font-bold shadow-glow">Post Listing</button>
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 rounded-xl glass-card font-bold">Cancel</button>
+                <button type="submit" className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold shadow-glow">Post Listing</button>
               </div>
             </form>
           </motion.div>
