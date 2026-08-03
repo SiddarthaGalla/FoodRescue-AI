@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Package, Plus, Clock, CheckCircle2, Truck, 
-  Leaf, Award, ArrowUpRight, Calendar 
+  Package, Plus, Truck, 
+  Leaf, Award
 } from 'lucide-react';
 import { Sidebar } from '../../components/common/Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,9 +22,9 @@ export const DonorDashboard: React.FC = () => {
   ];
 
   const activeDonations = [
-    { id: 'DON-9481', item: 'Gourmet Banquet Catering Surplus', qty: '140 Portions', status: 'Matched & Dispatched', eta: '18 mins', driver: 'Alex Rivera' },
-    { id: 'DON-9480', item: 'Fresh Artisan Bakery Pastries', qty: '80 Portions', status: 'Picked Up', eta: 'Delivered', driver: 'Sarah Connor' },
-    { id: 'DON-9479', item: 'Organic Salad Bar Surplus', qty: '65 Portions', status: 'Completed', eta: 'Receipt Generated', driver: 'Michael Chang' },
+    { id: 'DON-9481', item: 'Gourmet Banquet Catering Surplus', qty: '140 Portions', status: 'Matched & Dispatched', eta: '18 mins', driver: 'Driver Fleet #402' },
+    { id: 'DON-9480', item: 'Fresh Artisan Bakery Pastries', qty: '80 Portions', status: 'Picked Up', eta: 'Delivered', driver: 'Driver Fleet #118' },
+    { id: 'DON-9479', item: 'Organic Salad Bar Surplus', qty: '65 Portions', status: 'Completed', eta: 'Receipt Generated', driver: 'Driver Fleet #255' },
   ];
 
   const handleCreateDonation = (e: React.FormEvent) => {
@@ -42,13 +42,13 @@ export const DonorDashboard: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <span className="px-3 py-1 text-[10px] font-extrabold uppercase rounded-md bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
+            <span className="px-3 py-1 text-[10px] font-extrabold uppercase rounded-md bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
               Donor Portal
             </span>
             <h1 className="text-2xl font-black text-gray-900 dark:text-white mt-1">
               Welcome back, {user?.name || 'Partner Kitchen'}
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
               Manage your food surplus posts, track live volunteer pickups, and download tax reports.
             </p>
           </div>
@@ -71,14 +71,14 @@ export const DonorDashboard: React.FC = () => {
             return (
               <motion.div key={idx} whileHover="hover" variants={cardHover} className="p-6 rounded-3xl glass-card border border-brand-500/20 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-glow">
                     <Icon className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400">{s.change}</span>
+                  <span className="text-[10px] font-extrabold text-brand-700 dark:text-brand-400">{s.change}</span>
                 </div>
                 <div>
                   <h3 className="text-2xl font-black text-gray-900 dark:text-white">{s.value}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{s.title}</p>
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{s.title}</p>
                 </div>
               </motion.div>
             );
@@ -91,26 +91,26 @@ export const DonorDashboard: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-gray-200/50 dark:border-gray-800/50 text-gray-500">
-                  <th className="pb-3 font-semibold">ID</th>
-                  <th className="pb-3 font-semibold">Surplus Item</th>
-                  <th className="pb-3 font-semibold">Quantity</th>
-                  <th className="pb-3 font-semibold">Status</th>
-                  <th className="pb-3 font-semibold">Driver</th>
+                <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 font-bold">
+                  <th className="pb-3">ID</th>
+                  <th className="pb-3">Surplus Item</th>
+                  <th className="pb-3">Quantity</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3">Assigned Logistics</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200/30 dark:divide-gray-800/30">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {activeDonations.map((item) => (
                   <tr key={item.id} className="hover:bg-brand-500/5 transition-colors">
-                    <td className="py-4 font-mono font-bold text-brand-600 dark:text-brand-400">{item.id}</td>
+                    <td className="py-4 font-mono font-bold text-brand-700 dark:text-brand-400">{item.id}</td>
                     <td className="py-4 font-bold text-gray-900 dark:text-white">{item.item}</td>
-                    <td className="py-4 text-gray-600 dark:text-gray-300">{item.qty}</td>
+                    <td className="py-4 text-gray-700 dark:text-gray-300 font-medium">{item.qty}</td>
                     <td className="py-4">
-                      <span className="px-2.5 py-1 text-[10px] font-extrabold uppercase rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
+                      <span className="px-2.5 py-1 text-[10px] font-extrabold uppercase rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
                         {item.status}
                       </span>
                     </td>
-                    <td className="py-4 text-gray-500">{item.driver}</td>
+                    <td className="py-4 font-semibold text-gray-700 dark:text-gray-300">{item.driver}</td>
                   </tr>
                 ))}
               </tbody>
@@ -127,16 +127,16 @@ export const DonorDashboard: React.FC = () => {
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Post New Food Surplus Batch</h3>
             <form onSubmit={handleCreateDonation} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold mb-1">Food Item Name / Description</label>
+                <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Food Item Name / Description</label>
                 <input type="text" required placeholder="e.g., Prepared Hot Meals (Pasta & Salad)" className="w-full px-3 py-2 rounded-xl glass-input" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold mb-1">Quantity (Portions)</label>
+                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Quantity (Portions)</label>
                   <input type="number" required placeholder="120" className="w-full px-3 py-2 rounded-xl glass-input" />
                 </div>
                 <div>
-                  <label className="block font-bold mb-1">Expiry Window (Hours)</label>
+                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Expiry Window (Hours)</label>
                   <input type="number" required placeholder="4" className="w-full px-3 py-2 rounded-xl glass-input" />
                 </div>
               </div>

@@ -75,20 +75,20 @@ export const Home: React.FC = () => {
 
   const testimonials = [
     {
-      name: 'Chef Marcus Vance',
-      role: 'Executive Director, Horizon Culinary Group',
+      name: 'Executive Culinary Partner',
+      role: 'Horizon Hotel & Resort Alliance',
       image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=150&auto=format&fit=crop&q=80',
       text: 'FoodRescue AI transformed how our 5-star hotel manages surplus banquet meals. We rescued 14,000 hot meals last quarter effortlessly.',
     },
     {
-      name: 'Elena Rostova',
-      role: 'Director, Hope Community Haven NGO',
+      name: 'Program Director',
+      role: 'Hope Community Haven NGO Network',
       image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
       text: 'The AI notification system alerts us 2 hours before food arrives. It has increased our meal distribution efficiency by over 300%.',
     },
     {
-      name: 'David Chen',
-      role: 'Lead Volunteer Driver',
+      name: 'Community Route Captain',
+      role: 'Regional Volunteer Logistics Fleet',
       image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
       text: 'The route optimization app makes food rescue seamless during my evening commute. Every delivery feels directly impactful.',
     },
