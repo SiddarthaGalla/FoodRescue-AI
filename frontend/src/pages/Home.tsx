@@ -108,19 +108,19 @@ export const Home: React.FC = () => {
             variants={staggerContainer}
             className="lg:col-span-7 space-y-6 text-left"
           >
-            <motion.div variants={slideUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card border border-brand-500/30 text-xs font-bold text-brand-700 dark:text-brand-400">
-              <Sparkles className="w-4 h-4 text-brand-600 animate-spin" />
+            <motion.div variants={slideUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card border border-brand-500/30 text-xs font-black text-brand-700 dark:text-brand-400">
+              <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400 animate-spin" />
               <span>Next-Gen AI Food Redistribution Platform</span>
             </motion.div>
 
-            <motion.h1 variants={slideUp} className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] text-gray-900 dark:text-white break-words">
+            <motion.h1 variants={slideUp} className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] text-gray-900 dark:text-white break-words">
               Turn Surplus Food into <br className="hidden sm:inline" />
-              <span className="bg-gradient-to-r from-brand-700 via-brand-600 to-emerald-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-700 via-brand-600 to-emerald-500 dark:from-brand-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text text-transparent">
                 Nourishment & Impact
               </span>
             </motion.h1>
 
-            <motion.p variants={slideUp} className="text-sm sm:text-base lg:text-lg text-gray-700 dark:text-gray-200 leading-relaxed max-w-2xl font-medium">
+            <motion.p variants={slideUp} className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-100 leading-relaxed max-w-2xl font-semibold">
               Connecting commercial kitchens, corporate cafeterias, and event centers with verified NGOs and volunteer drivers in real-time. Driven by smart ML logistics.
             </motion.p>
 
@@ -130,7 +130,7 @@ export const Home: React.FC = () => {
                   variants={buttonPress}
                   whileHover="hover"
                   whileTap="tap"
-                  className="px-6 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow transition-all flex items-center gap-2 group"
+                  className="px-6 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-black text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow transition-all flex items-center gap-2 group"
                 >
                   <span>Start Rescuing Food</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -141,7 +141,7 @@ export const Home: React.FC = () => {
                   variants={buttonPress}
                   whileHover="hover"
                   whileTap="tap"
-                  className="px-6 sm:px-7 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 glass-card hover:border-brand-500/40 rounded-2xl transition-all border border-gray-200 dark:border-gray-800"
+                  className="px-6 sm:px-7 py-3.5 sm:py-4 text-xs sm:text-sm font-black text-gray-900 dark:text-white glass-card hover:border-brand-500/40 rounded-2xl transition-all border border-gray-300 dark:border-gray-700"
                 >
                   See How It Works
                 </motion.button>
@@ -152,15 +152,15 @@ export const Home: React.FC = () => {
             <motion.div variants={slideUp} className="pt-6 border-t border-gray-200 dark:border-gray-800 grid grid-cols-3 gap-3 sm:gap-6">
               <div>
                 <p className="text-xl sm:text-2xl font-black text-brand-700 dark:text-brand-400">99.4%</p>
-                <p className="text-[11px] sm:text-xs font-bold text-gray-700 dark:text-gray-300">Match Accuracy</p>
+                <p className="text-[11px] sm:text-xs font-black text-gray-800 dark:text-gray-200">Match Accuracy</p>
               </div>
               <div>
                 <p className="text-xl sm:text-2xl font-black text-brand-700 dark:text-brand-400">&lt; 35m</p>
-                <p className="text-[11px] sm:text-xs font-bold text-gray-700 dark:text-gray-300">Avg Rescue Time</p>
+                <p className="text-[11px] sm:text-xs font-black text-gray-800 dark:text-gray-200">Avg Rescue Time</p>
               </div>
               <div>
                 <p className="text-xl sm:text-2xl font-black text-brand-700 dark:text-brand-400">Zero</p>
-                <p className="text-[11px] sm:text-xs font-bold text-gray-700 dark:text-gray-300">Waste Guarantee</p>
+                <p className="text-[11px] sm:text-xs font-black text-gray-800 dark:text-gray-200">Waste Guarantee</p>
               </div>
             </motion.div>
           </motion.div>
@@ -182,18 +182,18 @@ export const Home: React.FC = () => {
                   alt="Food Rescue Distribution" 
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex items-end p-4">
                   <div className="text-white">
-                    <span className="px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded-md bg-brand-500 text-white">
+                    <span className="px-2.5 py-0.5 text-[9px] font-black uppercase rounded-md bg-brand-500 text-white">
                       Live Surplus Match
                     </span>
-                    <h4 className="text-sm font-bold mt-1">Fresh Catering Surplus • 140 Portions</h4>
+                    <h4 className="text-sm font-black mt-1 text-white">Fresh Catering Surplus • 140 Portions</h4>
                   </div>
                 </div>
               </div>
 
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 space-y-2">
-                <div className="flex justify-between text-xs font-bold text-gray-900 dark:text-white">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-brand-500/10 dark:bg-brand-950/40 border border-brand-500/30 space-y-2">
+                <div className="flex justify-between text-xs font-black text-gray-900 dark:text-white">
                   <span>Logistics Route Optimization</span>
                   <span className="text-brand-700 dark:text-brand-400">98% Efficient</span>
                 </div>
@@ -202,9 +202,9 @@ export const Home: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] font-bold text-gray-700 dark:text-gray-300">
-                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-brand-600" /> Prep: 20m ago</span>
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-600" /> 1.8 mi away</span>
+              <div className="flex items-center justify-between text-[11px] font-black text-gray-800 dark:text-gray-200">
+                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" /> Prep: 20m ago</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" /> 1.8 mi away</span>
               </div>
             </motion.div>
           </motion.div>
@@ -213,7 +213,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Stats Counter Section */}
-      <section className="py-10 sm:py-12 bg-brand-500/10 border-y border-brand-500/20">
+      <section className="py-10 sm:py-12 bg-brand-500/10 dark:bg-brand-950/30 border-y border-brand-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {stats.map((stat, idx) => {
@@ -230,8 +230,8 @@ export const Home: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{stat.value}</h3>
-                    <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{stat.label}</p>
-                    <p className="text-[10px] text-brand-700 dark:text-brand-400 font-extrabold mt-0.5">{stat.change}</p>
+                    <p className="text-xs font-black text-gray-800 dark:text-gray-100">{stat.label}</p>
+                    <p className="text-[10px] text-brand-700 dark:text-brand-400 font-black mt-0.5">{stat.change}</p>
                   </div>
                 </motion.div>
               );
@@ -243,13 +243,13 @@ export const Home: React.FC = () => {
       {/* Features Grid with Visual Photos */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4 mb-12 sm:mb-16">
-          <h2 className="text-xs font-extrabold uppercase tracking-widest text-brand-700 dark:text-brand-400">
+          <h2 className="text-xs font-black uppercase tracking-widest text-brand-700 dark:text-brand-400">
             Engineered For Scale & Safety
           </h2>
-          <p className="text-2xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          <p className="text-2xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
             Advanced Intelligence Meeting Human Compassion
           </p>
-          <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+          <p className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200">
             Our platform solves regional logistics challenges to ensure surplus food is safely redirected before spoilage.
           </p>
         </div>
@@ -271,8 +271,8 @@ export const Home: React.FC = () => {
                   </div>
                 </div>
                 <div className="p-5 space-y-2">
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">{feat.title}</h3>
-                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">{feat.description}</p>
+                  <h3 className="text-base font-black text-gray-900 dark:text-white">{feat.title}</h3>
+                  <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed font-bold">{feat.description}</p>
                 </div>
               </motion.div>
             );
@@ -281,11 +281,11 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Step by Step How It Works with Photos */}
-      <section className="py-16 sm:py-20 bg-gradient-to-b from-transparent via-brand-500/10 to-transparent border-t border-brand-500/10">
+      <section className="py-16 sm:py-20 bg-gradient-to-b from-transparent via-brand-500/10 dark:via-brand-950/40 to-transparent border-t border-brand-500/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-2 sm:space-y-3">
-            <h2 className="text-xs font-extrabold uppercase tracking-widest text-brand-700 dark:text-brand-400">Workflow</h2>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">Seamless 4-Step Redistribution</h3>
+            <h2 className="text-xs font-black uppercase tracking-widest text-brand-700 dark:text-brand-400">Workflow</h2>
+            <h3 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">Seamless 4-Step Redistribution</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -293,14 +293,14 @@ export const Home: React.FC = () => {
               <div key={idx} className="rounded-3xl glass-card border border-brand-500/20 overflow-hidden space-y-3 p-4">
                 <div className="h-32 rounded-2xl overflow-hidden relative">
                   <img src={s.image} alt={s.title} className="w-full h-full object-cover" />
-                  <span className="absolute top-2 left-2 px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded-md bg-brand-600 text-white">
+                  <span className="absolute top-2 left-2 px-2.5 py-0.5 text-[9px] font-black uppercase rounded-md bg-brand-600 text-white">
                     {s.role}
                   </span>
                 </div>
                 <div className="space-y-1.5">
                   <span className="text-xs font-black text-brand-700 dark:text-brand-400">STEP {s.step}</span>
-                  <h4 className="text-sm font-bold text-gray-900 dark:text-white">{s.title}</h4>
-                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">{s.desc}</p>
+                  <h4 className="text-sm font-black text-gray-900 dark:text-white">{s.title}</h4>
+                  <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed font-bold">{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -311,8 +311,8 @@ export const Home: React.FC = () => {
       {/* Testimonials */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-2 sm:space-y-3">
-          <h2 className="text-xs font-extrabold uppercase tracking-widest text-brand-700 dark:text-brand-400">Community Voices</h2>
-          <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">Trusted By Donors, NGOs & Volunteers</h3>
+          <h2 className="text-xs font-black uppercase tracking-widest text-brand-700 dark:text-brand-400">Community Voices</h2>
+          <h3 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">Trusted By Donors, NGOs & Volunteers</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
@@ -328,12 +328,12 @@ export const Home: React.FC = () => {
                   <Star key={i} className="w-4 h-4 fill-amber-400" />
                 ))}
               </div>
-              <p className="text-xs text-gray-700 dark:text-gray-300 italic leading-relaxed font-medium">"{t.text}"</p>
+              <p className="text-xs text-gray-800 dark:text-gray-100 italic leading-relaxed font-bold">"{t.text}"</p>
               <div className="flex items-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-800">
                 <img src={t.image} alt={t.name} className="w-10 h-10 rounded-full object-cover ring-2 ring-brand-500/30 flex-shrink-0" />
                 <div>
-                  <h5 className="text-xs font-bold text-gray-900 dark:text-white">{t.name}</h5>
-                  <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-400">{t.role}</p>
+                  <h5 className="text-xs font-black text-gray-900 dark:text-white">{t.name}</h5>
+                  <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{t.role}</p>
                 </div>
               </div>
             </motion.div>
@@ -345,8 +345,8 @@ export const Home: React.FC = () => {
       <section className="py-12 sm:py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="relative p-8 sm:p-14 rounded-3xl bg-gradient-to-r from-brand-700 via-brand-600 to-emerald-600 text-white shadow-glow-lg overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-3 max-w-xl z-10 text-center md:text-left">
-            <h2 className="text-2xl sm:text-4xl font-black">Ready to Eliminate Food Waste in Your Community?</h2>
-            <p className="text-xs sm:text-sm text-brand-100 leading-relaxed font-medium">
+            <h2 className="text-2xl sm:text-4xl font-black text-white">Ready to Eliminate Food Waste in Your Community?</h2>
+            <p className="text-xs sm:text-sm text-brand-100 leading-relaxed font-bold">
               Join thousands of restaurants, caterers, NGOs, and volunteers making a daily difference.
             </p>
           </div>
@@ -355,7 +355,7 @@ export const Home: React.FC = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-7 py-3.5 text-xs font-bold text-brand-900 bg-white rounded-2xl shadow-xl hover:bg-brand-50 transition-all flex items-center gap-2"
+                className="px-7 py-3.5 text-xs font-black text-brand-900 bg-white rounded-2xl shadow-xl hover:bg-brand-50 transition-all flex items-center gap-2"
               >
                 <span>Register Your Organization</span>
                 <ChevronRight className="w-4 h-4" />
