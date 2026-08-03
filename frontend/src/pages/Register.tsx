@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyRound, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyRound, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { UserRole } from '../types/auth';
@@ -36,10 +36,10 @@ export const Register: React.FC = () => {
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   const rolesList: { id: UserRole; title: string; desc: string; icon: any }[] = [
-    { id: 'donor', title: 'Food Donor', desc: 'Restaurants, Hotels, Events', icon: Building2 },
-    { id: 'ngo', title: 'Shelter / NGO', desc: 'Non-profits, Food Banks', icon: Shield },
-    { id: 'volunteer', title: 'Volunteer Driver', desc: 'Logistics & Transport', icon: Truck },
-    { id: 'admin', title: 'Platform Admin', desc: 'Operations Manager', icon: Leaf },
+    { id: 'donor', title: 'Food Donor', desc: 'Restaurants & Catering', icon: Building2 },
+    { id: 'ngo', title: 'Shelter / NGO', desc: 'Shelters & Food Banks', icon: Shield },
+    { id: 'volunteer', title: 'Volunteer', desc: 'Logistics Transport', icon: Truck },
+    { id: 'admin', title: 'Admin', desc: 'Platform Operations', icon: Leaf },
   ];
 
   useEffect(() => {
@@ -172,21 +172,30 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-mesh-light dark:bg-mesh-dark">
-      <motion.div initial="hidden" animate="visible" variants={slideUp} className="w-full max-w-lg space-y-6">
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 sm:py-12 px-3 sm:px-6 lg:px-8 bg-mesh-light dark:bg-mesh-dark">
+      <motion.div initial="hidden" animate="visible" variants={slideUp} className="w-full max-w-md sm:max-w-lg space-y-4 sm:space-y-6">
         
-        <div className="p-6 sm:p-8 rounded-3xl glass-card border border-brand-500/30 shadow-glow-lg space-y-6">
+        {/* Glossy Register Card */}
+        <div className="p-4 sm:p-8 rounded-3xl glass-card border border-brand-500/30 shadow-2xl space-y-5 sm:space-y-6">
+          
+          {/* Brand Header */}
           <div className="text-center space-y-2">
-            <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-emerald-400 flex items-center justify-center shadow-glow text-white">
-              <Leaf className="w-6 h-6" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 text-[10px] sm:text-xs font-black border border-brand-500/20 mb-1">
+              <Sparkles className="w-3.5 h-3.5 text-brand-600 animate-pulse" />
+              <span>Join FoodRescue AI Network</span>
             </div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white">Create FoodRescue Account</h2>
-            <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Select your role and registration method</p>
+            <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-emerald-400 flex items-center justify-center shadow-glow text-white">
+              <Leaf className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">Create Your Account</h2>
+            <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Empowering surplus food rescue in real-time</p>
           </div>
 
-          {/* Role Selector */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-black text-gray-900 dark:text-gray-100">1. Choose Organization Role</label>
+          {/* Role Selector Grid (2x2 on Mobile Phone & Desktop) */}
+          <div className="space-y-2">
+            <label className="block text-xs font-black text-gray-900 dark:text-gray-100 text-center sm:text-left">
+              1. Select Organization Role
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {rolesList.map((r) => {
                 const Icon = r.icon;
@@ -198,14 +207,14 @@ export const Register: React.FC = () => {
                     onClick={() => setRole(r.id)}
                     className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
                       isSelected
-                        ? 'border-brand-600 bg-brand-500/10 text-brand-700 dark:text-brand-400 shadow-glow'
-                        : 'border-gray-300 dark:border-gray-800 hover:bg-brand-500/5 text-gray-800 dark:text-gray-200'
+                        ? 'border-brand-600 bg-brand-500/10 dark:bg-brand-950/60 text-brand-700 dark:text-brand-400 shadow-glow ring-1 ring-brand-500'
+                        : 'border-gray-200 dark:border-gray-800 hover:bg-brand-500/5 text-gray-800 dark:text-gray-200'
                     }`}
                   >
-                    <Icon className="w-5 h-5 mb-1 text-brand-600" />
+                    <Icon className="w-4 h-4 mb-1 text-brand-600 dark:text-brand-400" />
                     <div>
-                      <p className="text-xs font-bold">{r.title}</p>
-                      <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-400">{r.desc}</p>
+                      <p className="text-xs font-black text-gray-900 dark:text-white">{r.title}</p>
+                      <p className="text-[9px] font-bold text-gray-600 dark:text-gray-400">{r.desc}</p>
                     </div>
                   </button>
                 );
@@ -231,13 +240,13 @@ export const Register: React.FC = () => {
             </button>
           </div>
 
-          {/* Registration Mode Switcher */}
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-gray-100 dark:bg-gray-900/60 text-xs font-black">
+          {/* Registration Mode Segment Control */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-gray-100 dark:bg-gray-900/80 text-xs font-black">
             <button
               type="button"
               onClick={() => setRegMode('form')}
-              className={`py-2 rounded-xl transition-all ${
-                regMode === 'form' ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm' : 'text-gray-700'
+              className={`py-2.5 rounded-xl transition-all ${
+                regMode === 'form' ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm' : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Standard Form
@@ -245,42 +254,43 @@ export const Register: React.FC = () => {
             <button
               type="button"
               onClick={() => setRegMode('otp')}
-              className={`py-2 rounded-xl transition-all ${
-                regMode === 'otp' ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm' : 'text-gray-700'
+              className={`py-2.5 rounded-xl transition-all ${
+                regMode === 'otp' ? 'bg-white dark:bg-brand-950 text-brand-700 dark:text-brand-400 shadow-sm' : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               Email / Phone OTP
             </button>
           </div>
 
+          {/* Form Content */}
           {regMode === 'form' ? (
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Full Name / Org Name</label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-3 w-4 h-4 text-gray-600" />
+                  <User className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
                     placeholder="Green Bistro LLC"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-600" />
+                    <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
                       placeholder="contact@bistro.com"
                     />
                   </div>
@@ -288,12 +298,12 @@ export const Register: React.FC = () => {
                 <div>
                   <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Phone Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-3.5 top-3 w-4 h-4 text-gray-600" />
+                    <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
                       placeholder="+1 555-0199"
                     />
                   </div>
@@ -303,13 +313,13 @@ export const Register: React.FC = () => {
               <div>
                 <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-600" />
+                  <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
                     placeholder="At least 6 characters"
                   />
                 </div>
@@ -321,7 +331,7 @@ export const Register: React.FC = () => {
                 whileTap="tap"
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-xl shadow-glow flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 text-xs font-black text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>
@@ -330,7 +340,7 @@ export const Register: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {!otpSent ? (
-                <form onSubmit={handleSendOTP} className="space-y-4">
+                <form onSubmit={handleSendOTP} className="space-y-3.5">
                   <div>
                     <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Email or Phone</label>
                     <input
@@ -338,7 +348,7 @@ export const Register: React.FC = () => {
                       required
                       value={otpTarget}
                       onChange={(e) => setOtpTarget(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs"
+                      className="w-full px-3.5 py-3 rounded-xl glass-input text-xs"
                       placeholder="user@example.com or +15550199"
                     />
                   </div>
@@ -347,21 +357,21 @@ export const Register: React.FC = () => {
                     whileHover="hover"
                     type="submit"
                     disabled={isSendingOTP}
-                    className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 to-emerald-500 rounded-xl shadow-glow"
+                    className="w-full py-3.5 text-xs font-black text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow"
                   >
-                    {isSendingOTP ? 'Dispatching...' : 'Send OTP Verification Code'}
+                    {isSendingOTP ? 'Dispatching OTP...' : 'Send OTP Verification Code'}
                   </motion.button>
                 </form>
               ) : (
-                <form onSubmit={handleVerifyOTP} className="space-y-4">
-                  <div className="p-3.5 rounded-2xl bg-brand-500/10 border text-center text-xs font-bold text-gray-900 dark:text-white space-y-1">
+                <form onSubmit={handleVerifyOTP} className="space-y-3.5">
+                  <div className="p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-center text-xs font-bold text-gray-900 dark:text-white space-y-1">
                     <p>Real-time OTP dispatched to <strong>{otpTarget}</strong></p>
-                    <button type="button" onClick={() => setOtpCode(liveOTP || '123456')} className="font-black text-brand-700 underline block mx-auto">
+                    <button type="button" onClick={() => setOtpCode(liveOTP || '123456')} className="font-black text-brand-700 dark:text-brand-400 underline block mx-auto">
                       Auto-fill Live Code: {liveOTP || '123456'}
                     </button>
                   </div>
                   <div>
-                    <label className="block text-xs font-black mb-1">Enter 6-Digit Code</label>
+                    <label className="block text-xs font-black mb-1 text-gray-900 dark:text-white">Enter 6-Digit Code</label>
                     <input
                       type="text"
                       maxLength={6}
@@ -376,15 +386,17 @@ export const Register: React.FC = () => {
                     whileHover="hover"
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-3 text-xs font-bold text-white bg-brand-600 rounded-xl shadow-glow"
+                    className="w-full py-3.5 text-xs font-black text-white bg-brand-600 rounded-2xl shadow-glow flex items-center justify-center gap-2"
                   >
-                    Verify & Create Account
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Verify & Create Account</span>
                   </motion.button>
                 </form>
               )}
             </div>
           )}
 
+          {/* Footer Link */}
           <div className="pt-2 text-center text-xs font-extrabold text-gray-800 dark:text-gray-200">
             Already registered?{' '}
             <Link to="/login" className="font-black text-brand-700 dark:text-brand-400 hover:underline">
