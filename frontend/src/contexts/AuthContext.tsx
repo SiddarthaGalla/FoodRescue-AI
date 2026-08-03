@@ -9,6 +9,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (credentials: any) => Promise<UserRole>;
   register: (userData: any) => Promise<UserRole>;
+  sendOTP: (target: string) => Promise<string>;
+  loginWithOTP: (target: string, otp: string, role?: UserRole, name?: string) => Promise<UserRole>;
+  loginWithGoogle: (email: string, name: string, role?: UserRole, profileImage?: string) => Promise<UserRole>;
   logout: () => void;
 }
 
@@ -67,6 +70,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res.user.role;
   };
 
+  const sendOTP = async (target: string): Promise<string> => {
+    const res = await apiRequest<{ message: string; demo_otp?: string }>('/auth/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ target }),
+    });
+    return res.demo_otp || '123456';
+  };
+
+  const loginWithOTP = async (target: string, otp: string, role?: UserRole, name?: string): Promise<UserRole> => {
+    const res = await apiRequest<AuthResponse>('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ target, otp, role, name }),
+    });
+
+    setToken(res.access_token);
+    setUser(res.user);
+    localStorage.setItem('foodrescue_token', res.access_token);
+    localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+    return res.user.role;
+  };
+
+  const loginWithGoogle = async (email: string, name: string, role?: UserRole, profileImage?: string): Promise<UserRole> => {
+    const res = await apiRequest<AuthResponse>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ email, name, role, profileImage }),
+    });
+
+    setToken(res.access_token);
+    setUser(res.user);
+    localStorage.setItem('foodrescue_token', res.access_token);
+    localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+    return res.user.role;
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -83,6 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user && !!token,
         login,
         register,
+        sendOTP,
+        loginWithOTP,
+        loginWithGoogle,
         logout,
       }}
     >

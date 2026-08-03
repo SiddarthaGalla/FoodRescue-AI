@@ -47,3 +47,19 @@ class ResetPasswordRequest(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     token: str
+
+class SendOTPRequest(BaseModel):
+    target: str = Field(..., description="Email address or phone number")
+
+class VerifyOTPRequest(BaseModel):
+    target: str = Field(..., description="Email address or phone number")
+    otp: str = Field(..., min_length=6, max_length=6)
+    role: Optional[UserRole] = UserRole.DONOR
+    name: Optional[str] = None
+
+class GoogleAuthRequest(BaseModel):
+    idToken: Optional[str] = None
+    email: EmailStr
+    name: str
+    profileImage: Optional[str] = None
+    role: Optional[UserRole] = UserRole.DONOR

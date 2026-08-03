@@ -9,30 +9,33 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#F8FFF9',
+          50: '#F0FDF4',
           100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
           400: '#4ADE80',
           500: '#22C55E',
           600: '#16A34A',
-          800: '#15803D',
+          700: '#15803D',
+          800: '#166534',
           900: '#14532D',
-          950: '#07130A',
+          950: '#0B1912',
         },
         accent: {
           DEFAULT: '#10B981',
           hover: '#059669',
         },
-        bgLight: '#F8FFF9',
-        bgDark: '#07130A',
+        bgLight: '#FFFFFF',
+        bgDark: '#0B1912',
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(22, 163, 74, 0.08)',
-        'glass-hover': '0 12px 40px 0 rgba(22, 163, 74, 0.18)',
-        'glow': '0 0 25px rgba(34, 197, 94, 0.4)',
-        'glow-lg': '0 0 45px rgba(34, 197, 94, 0.6)',
+        'glass': '0 10px 30px -5px rgba(22, 163, 74, 0.08)',
+        'glass-hover': '0 20px 40px -10px rgba(22, 163, 74, 0.16)',
+        'glow': '0 0 25px rgba(34, 197, 94, 0.35)',
+        'glow-lg': '0 0 45px rgba(34, 197, 94, 0.55)',
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',
@@ -42,7 +45,7 @@ export default {
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-15px)' },
+          '50%': { transform: 'translateY(-12px)' },
         },
         'gradient-x': {
           '0%, 100%': {

@@ -1,22 +1,32 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyRound, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { UserRole } from '../types/auth';
 import { slideUp, buttonPress } from '../animations/variants';
 
 export const Register: React.FC = () => {
-  const { register } = useAuth();
+  const { register, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+
+  const [regMode, setRegMode] = useState<'form' | 'otp'>('form');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('donor');
+
+  const [otpTarget, setOtpTarget] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [demoOTP, setDemoOTP] = useState('');
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
+
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const rolesList: { id: UserRole; title: string; desc: string; icon: any }[] = [
@@ -26,20 +36,70 @@ export const Register: React.FC = () => {
     { id: 'admin', title: 'Platform Admin', desc: 'Operations Manager', icon: Leaf },
   ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password) {
       showToast('Please fill in required fields', 'error');
       return;
     }
-
     setIsSubmitting(true);
     try {
       const assignedRole = await register({ name, email, phone, password, role });
-      showToast(`Registration successful! Welcome to FoodRescue AI as a ${assignedRole.toUpperCase()}`, 'success');
+      showToast(`Account created! Welcome to FoodRescue AI as ${assignedRole.toUpperCase()}`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
       showToast(err.message || 'Registration failed', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpTarget) {
+      showToast('Please enter your email or phone number', 'error');
+      return;
+    }
+    setIsSendingOTP(true);
+    try {
+      const code = await sendOTP(otpTarget);
+      setDemoOTP(code);
+      setOtpSent(true);
+      showToast(`OTP sent to ${otpTarget}! Code: ${code}`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to send OTP', 'error');
+    } finally {
+      setIsSendingOTP(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode) {
+      showToast('Please enter the OTP code', 'error');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const assignedRole = await loginWithOTP(otpTarget, otpCode, role, name);
+      showToast(`Account verified via OTP! Welcome ${assignedRole.toUpperCase()}`, 'success');
+      navigate(`/dashboard/${assignedRole}`);
+    } catch (err: any) {
+      showToast(err.message || 'OTP verification failed', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleRegister = async (gUser: { email: string; name: string; avatar: string }) => {
+    setIsSubmitting(true);
+    try {
+      const assignedRole = await loginWithGoogle(gUser.email, gUser.name, role, gUser.avatar);
+      showToast(`Google registration successful! Welcome ${gUser.name}`, 'success');
+      setShowGoogleModal(false);
+      navigate(`/dashboard/${assignedRole}`);
+    } catch (err: any) {
+      showToast(err.message || 'Google Auth failed', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -49,19 +109,19 @@ export const Register: React.FC = () => {
     <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-mesh-light dark:bg-mesh-dark">
       <motion.div initial="hidden" animate="visible" variants={slideUp} className="w-full max-w-lg space-y-6">
         
-        <div className="p-8 rounded-3xl glass-card border border-brand-500/30 shadow-glow-lg space-y-6">
+        <div className="p-6 sm:p-8 rounded-3xl glass-card border border-brand-500/30 shadow-glow-lg space-y-6">
           <div className="text-center space-y-2">
             <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-emerald-400 flex items-center justify-center shadow-glow text-white">
               <Leaf className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">Create FoodRescue Account</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Join our zero food waste ecosystem</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Select your role and registration method</p>
           </div>
 
-          {/* Role Selection */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Select Your Role</label>
-            <div className="grid grid-cols-2 gap-2.5">
+          {/* Role Selector */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">1. Choose Organization Role</label>
+            <div className="grid grid-cols-2 gap-2">
               {rolesList.map((r) => {
                 const Icon = r.icon;
                 const isSelected = role === r.id;
@@ -73,13 +133,13 @@ export const Register: React.FC = () => {
                     className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-glow'
-                        : 'border-gray-200/50 dark:border-gray-800/50 hover:bg-brand-500/5 text-gray-700 dark:text-gray-300'
+                        : 'border-gray-200/60 dark:border-gray-800/60 hover:bg-brand-500/5 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     <Icon className="w-5 h-5 mb-1 text-brand-500" />
                     <div>
                       <p className="text-xs font-bold">{r.title}</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">{r.desc}</p>
+                      <p className="text-[10px] text-gray-500">{r.desc}</p>
                     </div>
                   </button>
                 );
@@ -87,80 +147,174 @@ export const Register: React.FC = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name / Org Name</label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
-                  placeholder="Green Bistro LLC"
-                />
-              </div>
-            </div>
+          {/* Google Button */}
+          <button
+            type="button"
+            onClick={() => setShowGoogleModal(true)}
+            className="w-full py-3 px-4 rounded-2xl glass-card border border-gray-200 dark:border-gray-800 hover:border-brand-500/40 text-xs font-bold text-gray-800 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>Register with Google</span>
+          </button>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
-                    placeholder="contact@bistro.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Phone (Optional)</label>
-                <div className="relative">
-                  <Phone className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
-                    placeholder="+1 555-0199"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
-                  placeholder="At least 6 characters"
-                />
-              </div>
-            </div>
-
-            <motion.button
-              variants={buttonPress}
-              whileHover="hover"
-              whileTap="tap"
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-xl shadow-glow flex items-center justify-center gap-2 disabled:opacity-50"
+          {/* Registration Mode Switcher */}
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-gray-100 dark:bg-gray-900/60 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setRegMode('form')}
+              className={`py-2 rounded-xl transition-all ${
+                regMode === 'form' ? 'bg-white dark:bg-brand-950 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-gray-500'
+              }`}
             >
-              <UserPlus className="w-4 h-4" />
-              <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>
-            </motion.button>
-          </form>
+              Standard Form
+            </button>
+            <button
+              type="button"
+              onClick={() => setRegMode('otp')}
+              className={`py-2 rounded-xl transition-all ${
+                regMode === 'otp' ? 'bg-white dark:bg-brand-950 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              Email / Phone OTP
+            </button>
+          </div>
+
+          {regMode === 'form' ? (
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name / Org Name</label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                    placeholder="Green Bistro LLC"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                      placeholder="contact@bistro.com"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                      placeholder="+1 555-0199"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-xs"
+                    placeholder="At least 6 characters"
+                  />
+                </div>
+              </div>
+
+              <motion.button
+                variants={buttonPress}
+                whileHover="hover"
+                whileTap="tap"
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-xl shadow-glow flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>
+              </motion.button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              {!otpSent ? (
+                <form onSubmit={handleSendOTP} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email or Phone</label>
+                    <input
+                      type="text"
+                      required
+                      value={otpTarget}
+                      onChange={(e) => setOtpTarget(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs"
+                      placeholder="user@example.com or +15550199"
+                    />
+                  </div>
+                  <motion.button
+                    variants={buttonPress}
+                    whileHover="hover"
+                    type="submit"
+                    disabled={isSendingOTP}
+                    className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 to-emerald-500 rounded-xl shadow-glow"
+                  >
+                    {isSendingOTP ? 'Sending...' : 'Send OTP Verification Code'}
+                  </motion.button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyOTP} className="space-y-4">
+                  <div className="p-3 rounded-2xl bg-brand-500/10 border text-center text-xs">
+                    OTP sent to <strong>{otpTarget}</strong>.{' '}
+                    <button type="button" onClick={() => setOtpCode(demoOTP || '123456')} className="font-bold underline text-brand-600">
+                      Auto-fill ({demoOTP || '123456'})
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Enter 6-Digit Code</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      className="w-full text-center tracking-[0.5em] font-black text-lg py-2.5 rounded-xl glass-input"
+                    />
+                  </div>
+                  <motion.button
+                    variants={buttonPress}
+                    whileHover="hover"
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-3 text-xs font-bold text-white bg-brand-600 rounded-xl shadow-glow"
+                  >
+                    Verify & Create Account
+                  </motion.button>
+                </form>
+              )}
+            </div>
+          )}
 
           <div className="pt-2 text-center text-xs text-gray-500">
             Already registered?{' '}
@@ -171,6 +325,38 @@ export const Register: React.FC = () => {
         </div>
 
       </motion.div>
+
+      {/* Simulated Google OAuth Modal */}
+      <AnimatePresence>
+        {showGoogleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold">Register with Google</span>
+                <button onClick={() => setShowGoogleModal(false)}><X className="w-4 h-4 text-gray-400" /></button>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { name: 'Siddartha Galla', email: 'siddartha@google.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=siddartha' },
+                  { name: 'Green Kitchens Org', email: 'contact@greenkitchens.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=greenkitchens' },
+                ].map((gUser, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleGoogleRegister(gUser)}
+                    className="w-full p-3 rounded-2xl border hover:bg-brand-500/10 flex items-center gap-3 text-left transition-all"
+                  >
+                    <img src={gUser.avatar} alt={gUser.name} className="w-8 h-8 rounded-full object-cover" />
+                    <div>
+                      <p className="text-xs font-bold">{gUser.name}</p>
+                      <p className="text-[10px] text-gray-500">{gUser.email}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

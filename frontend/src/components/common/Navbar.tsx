@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Leaf, Sun, Moon, Menu, X, LogIn, UserPlus, 
-  ChevronDown, LayoutDashboard, LogOut, Bell
+  ChevronDown, LayoutDashboard, LogOut
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,35 +44,35 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-20">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group flex-shrink-0">
             <motion.div 
-              whileHover={{ rotate: 12, scale: 1.1 }}
+              whileHover={{ rotate: 12, scale: 1.08 }}
               transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-              className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-brand-400 flex items-center justify-center shadow-glow text-white"
+              className="w-10 sm:w-11 h-10 sm:h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-brand-400 flex items-center justify-center shadow-glow text-white"
             >
-              <Leaf className="w-6 h-6" />
+              <Leaf className="w-5 sm:w-6 h-5 sm:h-6" />
             </motion.div>
             <div className="flex flex-col">
-              <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-brand-700 via-brand-500 to-emerald-400 bg-clip-text text-transparent dark:from-brand-400 dark:to-emerald-300">
+              <span className="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-brand-700 via-brand-500 to-emerald-500 bg-clip-text text-transparent dark:from-brand-400 dark:to-emerald-300">
                 FoodRescue AI
               </span>
-              <span className="text-[10px] font-semibold tracking-widest text-brand-600/80 dark:text-brand-400/80 uppercase -mt-1">
-                Zero Hunger • AI Driven
+              <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-brand-600 dark:text-brand-400 uppercase -mt-0.5">
+                Zero Waste Platform
               </span>
             </div>
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1 glass-card px-4 py-2 rounded-2xl">
+          <nav className="hidden md:flex items-center gap-1 glass-card px-3 py-1.5 rounded-2xl">
             {navLinks.map((link) => {
               const isActive = location.pathname === link.path;
               return (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`relative px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                  className={`relative px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 ${
                     isActive
-                      ? 'text-brand-600 dark:text-brand-400 font-semibold'
+                      ? 'text-brand-600 dark:text-brand-400 font-bold'
                       : 'text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400'
                   }`}
                 >
@@ -90,16 +90,16 @@ export const Navbar: React.FC = () => {
           </nav>
 
           {/* Right Action Items */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2.5">
             {/* Theme Toggle Button */}
             <motion.button
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.94 }}
               onClick={toggleTheme}
               className="p-2.5 rounded-xl glass-card text-gray-600 dark:text-gray-300 hover:text-brand-500 transition-colors"
               aria-label="Toggle Theme"
             >
-              {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-brand-600" />}
+              {theme === 'dark' ? <Sun className="w-4 sm:w-5 h-4 sm:h-5 text-amber-400" /> : <Moon className="w-4 sm:w-5 h-4 sm:h-5 text-brand-600" />}
             </motion.button>
 
             {isAuthenticated && user ? (
@@ -107,18 +107,18 @@ export const Navbar: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center gap-3 p-1.5 pr-3 rounded-2xl glass-card hover:border-brand-500/40 transition-all"
+                  className="flex items-center gap-2.5 p-1.5 pr-3 rounded-2xl glass-card hover:border-brand-500/40 transition-all"
                 >
                   <img
                     src={user.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`}
                     alt={user.name}
-                    className="w-9 h-9 rounded-xl object-cover ring-2 ring-brand-500/30"
+                    className="w-8 sm:w-9 h-8 sm:h-9 rounded-xl object-cover ring-2 ring-brand-500/30"
                   />
-                  <div className="text-left hidden lg:block">
-                    <p className="text-xs font-bold leading-tight text-gray-900 dark:text-white">{user.name}</p>
-                    <p className="text-[10px] font-semibold uppercase text-brand-600 dark:text-brand-400">{user.role}</p>
+                  <div className="text-left hidden lg:block max-w-[110px] overflow-hidden">
+                    <p className="text-xs font-bold leading-tight text-gray-900 dark:text-white truncate">{user.name}</p>
+                    <p className="text-[9px] font-extrabold uppercase text-brand-600 dark:text-brand-400">{user.role}</p>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
                 </motion.button>
 
                 <AnimatePresence>
@@ -131,7 +131,7 @@ export const Navbar: React.FC = () => {
                       className="absolute right-0 mt-3 w-56 p-2 rounded-2xl glass-card shadow-2xl border border-brand-500/20 backdrop-blur-2xl z-50"
                     >
                       <div className="px-3 py-2 border-b border-gray-200/50 dark:border-gray-800/50">
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">{user.name}</p>
+                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                       </div>
                       <div className="pt-2 flex flex-col gap-1">
@@ -166,9 +166,9 @@ export const Navbar: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.96 }}
-                    className="px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 glass-card hover:bg-brand-500/10 rounded-xl transition-all flex items-center gap-1.5"
+                    className="px-3.5 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 glass-card hover:bg-brand-500/10 rounded-xl transition-all flex items-center gap-1.5"
                   >
-                    <LogIn className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                    <LogIn className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                     Sign In
                   </motion.button>
                 </Link>
@@ -176,9 +176,9 @@ export const Navbar: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.04, boxShadow: '0 0 25px rgba(34, 197, 94, 0.4)' }}
                     whileTap={{ scale: 0.96 }}
-                    className="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-xl shadow-glow transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-xl shadow-glow transition-all flex items-center gap-1.5"
                   >
-                    <UserPlus className="w-4 h-4" />
+                    <UserPlus className="w-3.5 h-3.5" />
                     Get Started
                   </motion.button>
                 </Link>
@@ -211,15 +211,15 @@ export const Navbar: React.FC = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="md:hidden glass-card border-t border-brand-500/20 px-4 pt-3 pb-6 flex flex-col gap-3"
+            transition={{ duration: 0.25 }}
+            className="md:hidden glass-card border-t border-brand-500/20 px-4 pt-3 pb-6 flex flex-col gap-2"
           >
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-brand-500 rounded-xl hover:bg-brand-500/10"
+                className="px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 hover:text-brand-500 rounded-xl hover:bg-brand-500/10"
               >
                 {link.name}
               </Link>
@@ -232,7 +232,7 @@ export const Navbar: React.FC = () => {
                       setMobileMenuOpen(false);
                       navigate(getDashboardPath());
                     }}
-                    className="w-full py-3 text-xs font-bold text-white bg-brand-600 rounded-xl flex items-center justify-center gap-2"
+                    className="w-full py-2.5 text-xs font-bold text-white bg-brand-600 rounded-xl flex items-center justify-center gap-2"
                   >
                     <LayoutDashboard className="w-4 h-4" />
                     Go to {user.role.toUpperCase()} Dashboard
@@ -242,7 +242,7 @@ export const Navbar: React.FC = () => {
                       setMobileMenuOpen(false);
                       handleLogout();
                     }}
-                    className="w-full py-3 text-xs font-bold text-red-600 bg-red-500/10 rounded-xl flex items-center justify-center gap-2"
+                    className="w-full py-2.5 text-xs font-bold text-red-600 bg-red-500/10 rounded-xl flex items-center justify-center gap-2"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
@@ -251,12 +251,12 @@ export const Navbar: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <button className="w-full py-3 text-xs font-bold glass-card rounded-xl text-center">
+                    <button className="w-full py-2.5 text-xs font-bold glass-card rounded-xl text-center">
                       Sign In
                     </button>
                   </Link>
                   <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                    <button className="w-full py-3 text-xs font-bold text-white bg-brand-600 rounded-xl shadow-glow text-center">
+                    <button className="w-full py-2.5 text-xs font-bold text-white bg-brand-600 rounded-xl shadow-glow text-center">
                       Get Started
                     </button>
                   </Link>
