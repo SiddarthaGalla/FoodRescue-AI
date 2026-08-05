@@ -35,7 +35,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav className="sticky top-0 z-50 glass-nav transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
           {/* Brand Logo */}
@@ -56,8 +56,8 @@ export const Navbar: React.FC = () => {
             </div>
           </Link>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-1 bg-brand-500/10 dark:bg-brand-950/40 p-1.5 rounded-full border border-brand-500/20">
+          {/* Centered Desktop Nav Links Pill */}
+          <div className="hidden md:flex items-center gap-1 bg-brand-500/10 dark:bg-brand-950/40 p-1.5 rounded-full border border-brand-500/20 shadow-sm">
             {navLinks.map((link) => (
               <Link
                 key={link.path}

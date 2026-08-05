@@ -188,7 +188,7 @@ export const Register: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 sm:py-12 px-3 sm:px-6 lg:px-8 bg-mesh-light dark:bg-mesh-dark">
-      <motion.div initial="hidden" animate="visible" variants={slideUp} className="w-full max-w-md sm:max-w-lg space-y-4 sm:space-y-6">
+      <motion.div initial="hidden" animate="visible" variants={slideUp} className="w-full max-w-md sm:max-w-xl space-y-4 sm:space-y-6 mx-auto">
         
         {/* Glossy Register Card */}
         <div className="p-4 sm:p-8 rounded-3xl glass-card border border-brand-500/30 shadow-2xl space-y-5 sm:space-y-6">
@@ -208,10 +208,10 @@ export const Register: React.FC = () => {
 
           {/* Role Selector Grid */}
           <div className="space-y-2">
-            <label className="block text-xs font-black text-gray-900 dark:text-gray-100 text-center sm:text-left">
+            <label className="block text-xs font-black text-gray-900 dark:text-gray-100 text-center">
               1. Select Organization Role
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {rolesList.map((r) => {
                 const Icon = r.icon;
                 const isSelected = role === r.id;
@@ -220,13 +220,13 @@ export const Register: React.FC = () => {
                     key={r.id}
                     type="button"
                     onClick={() => setRole(r.id)}
-                    className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'border-brand-600 bg-brand-500/10 dark:bg-brand-950/60 text-brand-700 dark:text-brand-400 shadow-glow ring-1 ring-brand-500'
                         : 'border-gray-200 dark:border-gray-800 hover:bg-brand-500/5 text-gray-800 dark:text-gray-200'
                     }`}
                   >
-                    <Icon className="w-4 h-4 mb-1 text-brand-600 dark:text-brand-400" />
+                    <Icon className="w-4 h-4 mb-1.5 text-brand-600 dark:text-brand-400" />
                     <div>
                       <p className="text-xs font-black text-gray-900 dark:text-white">{r.title}</p>
                       <p className="text-[9px] font-bold text-gray-600 dark:text-gray-400">{r.desc}</p>
@@ -278,7 +278,7 @@ export const Register: React.FC = () => {
           </div>
 
           {/* Registration Mode Segment Control */}
-          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-gray-100 dark:bg-gray-900/80 text-xs font-black">
+          <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-900/80 text-xs font-black">
             <button
               type="button"
               onClick={() => setRegMode('form')}
