@@ -21,3 +21,6 @@ backend/.env
 .idea/
 .DS_Store
 Thumbs.db
+
+# Agent instructions (kept local, shared verbally with collaborator)
+AGENTS.md
