@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyRound, CheckCircle2, Sparkles } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyRound, CheckCircle2, Sparkles, Fingerprint } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { UserRole } from '../types/auth';
@@ -12,6 +12,11 @@ declare global {
     google?: any;
   }
 }
+
+// Kinde SSO is the primary sign-up path only when configured (matches the
+// conditional KindeProvider in main.tsx); otherwise it stays hidden and the
+// legacy form/OTP flows below remain the only options.
+const kindeEnabled = !!import.meta.env.VITE_KINDE_DOMAIN && !!import.meta.env.VITE_KINDE_CLIENT_ID;
 
 export const Register: React.FC = () => {
   const { register, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
@@ -135,6 +140,15 @@ export const Register: React.FC = () => {
     }
   };
 
+  const handleKindeRegister = async () => {
+    try {
+      // Triggers the Kinde hosted sign-up redirect; session is synced on return.
+      await register({});
+    } catch (err: any) {
+      showToast(err.message || 'Kinde sign-up failed', 'error');
+    }
+  };
+
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpTarget) {
@@ -222,6 +236,26 @@ export const Register: React.FC = () => {
               })}
             </div>
           </div>
+
+          {/* Kinde SSO — primary path when configured */}
+          {kindeEnabled && (
+            <div className="space-y-2">
+              <motion.button
+                variants={buttonPress}
+                whileHover="hover"
+                whileTap="tap"
+                type="button"
+                onClick={handleKindeRegister}
+                className="w-full py-3.5 text-xs font-black text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow flex items-center justify-center gap-2"
+              >
+                <Fingerprint className="w-4 h-4" />
+                <span>Sign up with Kinde</span>
+              </motion.button>
+              <p className="text-center text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                Powered by Kinde
+              </p>
+            </div>
+          )}
 
           {/* Single Official Native Google Identity Services Button */}
           <div className="space-y-2">

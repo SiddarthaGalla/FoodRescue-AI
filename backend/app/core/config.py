@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://localhost:27017"
     DATABASE_NAME: str = "foodrescue_db"
 
+    # Kinde OAuth (empty = disabled, falls back to legacy dev auth)
+    KINDE_DOMAIN: str = ""  # e.g. "https://foodrescue.kinde.com"
+    KINDE_AUDIENCE: str = ""  # optional, validated against the token if set
+
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:3000",

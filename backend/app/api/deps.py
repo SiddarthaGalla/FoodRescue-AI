@@ -1,7 +1,8 @@
 from typing import Optional, List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from app.core.security import decode_access_token
+from app.core.config import settings
+from app.core.security import decode_access_token, verify_kinde_token, derive_role_from_kinde_payload
 from app.db.mongodb import get_database
 from app.models.user import user_helper
 from app.schemas.user import UserRole
@@ -19,7 +20,26 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # Kinde OAuth path (enabled when KINDE_DOMAIN is set). Falls through to the
+    # legacy HS256 path only when Kinde verification returns None.
+    if settings.KINDE_DOMAIN:
+        kinde_payload = verify_kinde_token(token)
+        if kinde_payload:
+            kinde_user = {
+                "id": kinde_payload["sub"],
+                "name": kinde_payload.get("name")
+                or f"{kinde_payload.get('given_name', '')} {kinde_payload.get('family_name', '')}".strip()
+                or kinde_payload.get("email")
+                or "Kinde User",
+                "email": kinde_payload.get("email"),
+                "phone": kinde_payload.get("phone_number"),
+                "role": derive_role_from_kinde_payload(kinde_payload),
+                "profileImage": kinde_payload.get("picture"),
+                "isVerified": True,
+            }
+            return user_helper(kinde_user)
+
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(
