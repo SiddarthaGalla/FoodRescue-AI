@@ -5,8 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.user import (
     UserCreate, UserLogin, UserResponse, Token,
     ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
-    SendOTPRequest, VerifyOTPRequest, GoogleAuthRequest, UserRole,
-    DummyLoginRequest
+    SendOTPRequest, VerifyOTPRequest, GoogleAuthRequest, UserRole
 )
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db.mongodb import get_database
@@ -87,104 +86,21 @@ async def login(credentials: UserLogin) -> Any:
             pass
 
     if not found_user:
-        req_email = credentials.email.lower()
-        req_prefix = req_email.split("@")[0]
         for u in MOCK_USERS_DB.values():
-            u_email = u.get("email", "").lower()
-            u_prefix = u_email.split("@")[0]
-            if u_email == req_email or u_prefix == req_prefix or u.get("role", "") in req_email:
+            if u["email"] == credentials.email:
                 found_user = u
                 break
 
-    # If user was not pre-seeded, dynamically create demo user so login never blocks testing
-    if not found_user:
-        now = datetime.utcnow()
-        req_email = credentials.email.lower()
-        derived_role = "donor"
-        if "admin" in req_email:
-            derived_role = "admin"
-        elif "ngo" in req_email:
-            derived_role = "ngo"
-        elif "volunteer" in req_email:
-            derived_role = "volunteer"
-        
-        user_id = f"auto-demo-{uuid.uuid4()}"
-        found_user = {
-            "id": user_id,
-            "name": req_email.split("@")[0].capitalize(),
-            "email": credentials.email,
-            "phone": "+15550000000",
-            "password": get_password_hash(credentials.password or "Password123!"),
-            "role": derived_role,
-            "profileImage": f"https://api.dicebear.com/7.x/avataaars/svg?seed={req_email}",
-            "isVerified": True,
-            "createdAt": now,
-            "updatedAt": now,
-        }
-        MOCK_USERS_DB[user_id] = found_user
-        password_ok = True
-    else:
-        password_ok = False
-        if verify_password(credentials.password, found_user.get("password", "")):
-            password_ok = True
-        elif credentials.password in (
-            f"{found_user.get('role')}123",
-            "password",
-            "123456",
-            "AdminPass123!",
-            "DonorPass123!",
-            "NgoPass123!",
-            "VolunteerPass123!",
-            "Password123!",
-            "admin",
-            "donor",
-            "ngo",
-            "volunteer"
-        ) or True: # Dev demo mode fallback
-            password_ok = True
+    if not found_user or not verify_password(credentials.password, found_user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
 
     user_id = str(found_user.get("_id", found_user.get("id")))
     role = found_user.get("role", "donor")
     formatted_user = user_helper(found_user)
     access_token = create_access_token(subject=user_id, role=role)
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": formatted_user
-    }
-
-@router.post("/dummy-login", response_model=Token)
-async def dummy_login(req: DummyLoginRequest) -> Any:
-    role_str = req.role.value if hasattr(req.role, 'value') else str(req.role)
-    target_role = role_str.lower()
-    found_user = None
-
-    for u in MOCK_USERS_DB.values():
-        if u.get("role") == target_role:
-            found_user = u
-            break
-
-    if not found_user:
-        now = datetime.utcnow()
-        user_id = f"dummy-{target_role}-user"
-        found_user = {
-            "id": user_id,
-            "name": req.name or f"Demo {target_role.capitalize()} User",
-            "email": f"{target_role}@foodrescue.org",
-            "phone": "+15550009999",
-            "password": get_password_hash("DummyPass123!"),
-            "role": target_role,
-            "profileImage": f"https://api.dicebear.com/7.x/avataaars/svg?seed={target_role}",
-            "isVerified": True,
-            "createdAt": now,
-            "updatedAt": now,
-        }
-        MOCK_USERS_DB[user_id] = found_user
-
-    user_id = str(found_user.get("_id", found_user.get("id")))
-    formatted_user = user_helper(found_user)
-    access_token = create_access_token(subject=user_id, role=target_role)
 
     return {
         "access_token": access_token,

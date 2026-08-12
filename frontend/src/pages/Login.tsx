@@ -21,7 +21,7 @@ declare global {
 const kindeEnabled = !!import.meta.env.VITE_KINDE_DOMAIN && !!import.meta.env.VITE_KINDE_CLIENT_ID;
 
 export const Login: React.FC = () => {
-  const { login, dummyLogin, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
+  const { login, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -43,24 +43,11 @@ export const Login: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
-  const demoCredentials: Record<UserRole, { email: string; pass: string; title: string; color: string }> = {
-    donor: { email: 'donor@culinary.com', pass: 'DonorPass123!', title: 'Food Donor', color: 'from-amber-500 to-orange-600' },
-    ngo: { email: 'ngo@shelterhaven.org', pass: 'NgoPass123!', title: 'Shelter NGO', color: 'from-emerald-500 to-teal-700' },
-    volunteer: { email: 'volunteer@rescue.org', pass: 'VolunteerPass123!', title: 'Volunteer Driver', color: 'from-sky-500 to-blue-700' },
-    admin: { email: 'admin@foodrescue.org', pass: 'AdminPass123!', title: 'Platform Admin', color: 'from-purple-600 to-indigo-800' },
-  };
-
-  const handleDirectDummyLogin = async (role: UserRole) => {
-    setIsSubmitting(true);
-    try {
-      const assignedRole = await dummyLogin(role);
-      showToast(`1-Click Demo Login successful! Welcome ${role.toUpperCase()}`, 'success');
-      navigate(`/dashboard/${assignedRole}`);
-    } catch (err: any) {
-      showToast(err.message || 'Dummy login failed', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const demoCredentials: Record<UserRole, { email: string; pass: string; title: string }> = {
+    donor: { email: 'donor@culinary.com', pass: 'DonorPass123!', title: 'Food Donor' },
+    ngo: { email: 'ngo@shelterhaven.org', pass: 'NgoPass123!', title: 'Shelter NGO' },
+    volunteer: { email: 'volunteer@rescue.org', pass: 'VolunteerPass123!', title: 'Volunteer' },
+    admin: { email: 'admin@foodrescue.org', pass: 'AdminPass123!', title: 'Platform Admin' },
   };
 
   useEffect(() => {
@@ -234,33 +221,10 @@ export const Login: React.FC = () => {
             <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Select your role and authentication method</p>
           </div>
 
-          {/* 1-Click Direct Dummy Entrance */}
-          <div className="space-y-2 p-3 rounded-2xl bg-brand-500/10 border border-brand-500/30">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-brand-700 dark:text-brand-300 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> ⚡ 1-Click Direct Demo Entrance
-              </span>
-              <span className="text-[9px] font-bold text-gray-500">No Password Needed</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(['donor', 'ngo', 'volunteer', 'admin'] as UserRole[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => handleDirectDummyLogin(r)}
-                  className={`py-2 px-2 text-[10px] font-black uppercase rounded-xl transition-all text-white bg-gradient-to-r ${demoCredentials[r].color} hover:opacity-90 shadow-sm flex items-center justify-between`}
-                >
-                  <span>Enter {r}</span>
-                  <span className="opacity-80 text-[8px]">➔</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Role Preview Selector for Manual Fill */}
+          {/* Role Preview Selector */}
           <div className="space-y-1.5">
             <label className="block text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100 text-center">
-              MANUAL CREDENTIAL FILL BY ROLE
+              TARGET PORTAL ROLE
             </label>
             <div className="grid grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-900/60 border border-brand-500/20">
               {(['donor', 'ngo', 'volunteer', 'admin'] as UserRole[]).map((r) => (
@@ -513,42 +477,6 @@ export const Login: React.FC = () => {
             <Link to="/register" className="font-black text-brand-700 dark:text-brand-400 hover:underline">
               Create an Account
             </Link>
-          </div>
-        </div>
-
-        {/* Dummy Credentials Reference Card */}
-        <div className="p-4 sm:p-5 rounded-3xl glass-card border border-brand-500/20 shadow-xl space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-              <KeyRound className="w-4 h-4 text-brand-500" />
-              <span>Dummy Demo Accounts</span>
-            </h3>
-            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-500/20">
-              Pre-Configured
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
-            {(['donor', 'ngo', 'volunteer', 'admin'] as UserRole[]).map((r) => (
-              <div 
-                key={r}
-                onClick={() => handleQuickFill(r)}
-                className="p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 hover:border-brand-500/50 cursor-pointer transition-all space-y-1 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase text-brand-700 dark:text-brand-400">
-                    {demoCredentials[r].title} ({r})
-                  </span>
-                  <span className="text-[9px] font-bold text-gray-400 group-hover:text-brand-500">Fill ➔</span>
-                </div>
-                <p className="text-[11px] font-mono font-bold text-gray-800 dark:text-gray-200 truncate">
-                  {demoCredentials[r].email}
-                </p>
-                <p className="text-[10px] font-mono text-gray-700 dark:text-gray-300">
-                  Password: <code className="bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded font-bold text-brand-700 dark:text-brand-400">{demoCredentials[r].pass}</code>
-                </p>
-              </div>
-            ))}
           </div>
         </div>
 
