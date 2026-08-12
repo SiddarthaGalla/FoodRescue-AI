@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isLoading,
-        isAuthenticated: clerkEnabled ? isSignedIn : !!user && !!token,
+        isAuthenticated: clerkEnabled ? !!isSignedIn : !!user && !!token,
         login,
         register,
         sendOTP,

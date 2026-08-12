@@ -19,6 +19,9 @@ backend/.env
 
 # IDE & OS
 .vscode/
+
+# Local agent instructions (not shared via git)
+AGENTS.md
 .idea/
 .DS_Store
 Thumbs.db
