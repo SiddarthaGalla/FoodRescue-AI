@@ -1,0 +1,31 @@
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+*.local
+frontend/design/
+
+# Python & Backend
+backend/__pycache__/
+backend/*/__pycache__/
+backend/*/*/__pycache__/
+backend/*/*/*/__pycache__/
+backend/*/*/*/*/__pycache__/
+backend/.venv/
+backend/venv/
+backend/.env
+*.pyc
+
+# IDE & OS
+.vscode/
+
+# Local agent instructions (not shared via git)
+AGENTS.md
+.idea/
+.DS_Store
+Thumbs.db
+
+# Agent instructions (kept local, shared verbally with collaborator)
+AGENTS.md
+start.txt
