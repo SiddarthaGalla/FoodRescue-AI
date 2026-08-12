@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.user import (
     UserCreate, UserLogin, UserResponse, Token,
     ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
-    SendOTPRequest, VerifyOTPRequest, GoogleAuthRequest, UserRole
+    SendOTPRequest, VerifyOTPRequest, GoogleAuthRequest, DummyLoginRequest, UserRole
 )
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db.mongodb import get_database
@@ -245,6 +245,75 @@ async def google_auth(req: GoogleAuthRequest) -> Any:
         "user": formatted_user
     }
 
+@router.post("/dummy-login", response_model=Token)
+async def dummy_login(req: DummyLoginRequest) -> Any:
+    db = get_database()
+    role_str = req.role.value if hasattr(req.role, "value") else str(req.role)
+    target_email = f"{role_str}@foodrescue.org"
+
+    # Match pre-seeded demo emails if role matches standard demo users
+    if role_str == "donor":
+        target_email = "donor@culinary.com"
+    elif role_str == "ngo":
+        target_email = "ngo@shelterhaven.org"
+    elif role_str == "volunteer":
+        target_email = "volunteer@rescue.org"
+    elif role_str == "admin":
+        target_email = "admin@foodrescue.org"
+
+    found_user = None
+    if db is not None:
+        try:
+            found_user = await db.users.find_one({"email": target_email})
+        except Exception:
+            pass
+
+    if not found_user:
+        for u in MOCK_USERS_DB.values():
+            if u.get("email") == target_email or u.get("role") == role_str:
+                found_user = u
+                break
+
+    now = datetime.utcnow()
+    if not found_user:
+        user_name = req.name or f"Demo {role_str.upper()} User"
+        user_doc = {
+            "name": user_name,
+            "email": target_email,
+            "phone": "+1555019999",
+            "password": get_password_hash("DemoRolePass123!"),
+            "role": role_str,
+            "profileImage": f"https://api.dicebear.com/7.x/avataaars/svg?seed={role_str}",
+            "isVerified": True,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+        user_id = str(uuid.uuid4())
+        if db is not None:
+            try:
+                res = await db.users.insert_one(user_doc)
+                user_id = str(res.inserted_id)
+                user_doc["_id"] = res.inserted_id
+            except Exception:
+                user_doc["id"] = user_id
+                MOCK_USERS_DB[user_id] = user_doc
+        else:
+            user_doc["id"] = user_id
+            MOCK_USERS_DB[user_id] = user_doc
+
+        found_user = user_doc
+
+    user_id = str(found_user.get("_id", found_user.get("id")))
+    role = found_user.get("role", role_str)
+    formatted_user = user_helper(found_user)
+    access_token = create_access_token(subject=user_id, role=role)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": formatted_user
+    }
+
 @router.post("/logout")
 async def logout(current_user: dict = Depends(get_current_user)) -> Any:
     return {"message": "Successfully logged out"}
@@ -264,3 +333,4 @@ async def reset_password(req: ResetPasswordRequest) -> Any:
 @router.post("/verify-email")
 async def verify_email(req: VerifyEmailRequest) -> Any:
     return {"message": "Email address verified successfully"}
+

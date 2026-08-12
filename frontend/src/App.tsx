@@ -51,15 +51,19 @@ export const App: React.FC = () => {
                   {/* Protected Dashboards */}
                   <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                     <Route path="/dashboard/admin" element={<AdminDashboard />} />
+                    <Route path="/dashboard/admin/*" element={<AdminDashboard />} />
                   </Route>
                   <Route element={<ProtectedRoute allowedRoles={['donor']} />}>
                     <Route path="/dashboard/donor" element={<DonorDashboard />} />
+                    <Route path="/dashboard/donor/*" element={<DonorDashboard />} />
                   </Route>
                   <Route element={<ProtectedRoute allowedRoles={['ngo']} />}>
                     <Route path="/dashboard/ngo" element={<NGODashboard />} />
+                    <Route path="/dashboard/ngo/*" element={<NGODashboard />} />
                   </Route>
                   <Route element={<ProtectedRoute allowedRoles={['volunteer']} />}>
                     <Route path="/dashboard/volunteer" element={<VolunteerDashboard />} />
+                    <Route path="/dashboard/volunteer/*" element={<VolunteerDashboard />} />
                   </Route>
 
                   {/* 404 Route */}

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Union, Any
 import jwt
 import bcrypt
+from app.core.config import settings
 
 # Lazily-created JWKS clients
 _kinde_jwks_client: Optional[jwt.PyJWKClient] = None

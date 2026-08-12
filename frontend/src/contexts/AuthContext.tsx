@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: any) => Promise<UserRole>;
+  dummyLogin: (role: UserRole, name?: string) => Promise<UserRole>;
   register: (userData: any) => Promise<UserRole>;
   sendOTP: (target: string) => Promise<string>;
   loginWithOTP: (target: string, otp: string, role?: UserRole, name?: string) => Promise<UserRole>;
@@ -20,6 +21,45 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+const ClerkAuthSync: React.FC<{
+  onSync: (token: string, user: User) => void;
+}> = ({ onSync }) => {
+  const { isLoaded, isSignedIn, getToken } = useClerkAuth();
+  const { user: clerkUser } = useClerkUser();
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !clerkUser) return;
+    const sync = async () => {
+      try {
+        const clerkToken = await getToken();
+        if (clerkToken) {
+          const name = clerkUser.fullName || clerkUser.firstName || clerkUser.emailAddresses?.[0]?.emailAddress || 'Clerk User';
+          const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
+          const picture = clerkUser.imageUrl || undefined;
+          const derivedRole: UserRole = 'donor';
+          const clerkUserShape: User = {
+            id: clerkUser.id,
+            name,
+            email,
+            phone: (clerkUser as any)?.phoneNumbers?.[0]?.phoneNumber || undefined,
+            role: derivedRole,
+            profileImage: picture,
+            isVerified: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          onSync(clerkToken, clerkUserShape);
+        }
+      } catch (e) {
+        console.error('Clerk sync error:', e);
+      }
+    };
+    sync();
+  }, [isLoaded, isSignedIn, clerkUser]);
+
+  return null;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('foodrescue_user');
@@ -27,9 +67,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('foodrescue_token'));
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  const { isLoaded, isSignedIn, getToken } = useClerkAuth();
-  const { user: clerkUser } = useClerkUser();
 
   useEffect(() => {
     const savedToken = localStorage.getItem('foodrescue_token');
@@ -44,47 +81,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Failed to parse saved user from localStorage', e);
       }
     }
+    setIsLoading(false);
+  }, []);
 
-    if (!clerkEnabled || (savedToken && !savedToken.startsWith('clerk_'))) {
-      setIsLoading(false);
-      return;
-    }
-
-    if (!isLoaded) return;
-    const sync = async () => {
-      try {
-        if (isSignedIn && clerkUser) {
-          const clerkToken = await getToken();
-          if (clerkToken) {
-            const name = clerkUser.fullName || clerkUser.firstName || clerkUser.emailAddresses?.[0]?.emailAddress || 'Clerk User';
-            const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
-            const picture = clerkUser.imageUrl || undefined;
-            const derivedRole: UserRole = 'donor';
-            const clerkUserShape: User = {
-              id: clerkUser.id,
-              name,
-              email,
-              phone: (clerkUser as any)?.phoneNumbers?.[0]?.phoneNumber || undefined,
-              role: derivedRole,
-              profileImage: picture,
-              isVerified: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            setToken(clerkToken);
-            setUser(clerkUserShape);
-            localStorage.setItem('foodrescue_token', clerkToken);
-            localStorage.setItem('foodrescue_user', JSON.stringify(clerkUserShape));
-          }
-        }
-      } catch (e) {
-        console.error('Clerk sync error:', e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    sync();
-  }, [isLoaded, isSignedIn, clerkUser]);
+  const handleClerkSync = (clerkToken: string, clerkUserShape: User) => {
+    setToken(clerkToken);
+    setUser(clerkUserShape);
+    localStorage.setItem('foodrescue_token', clerkToken);
+    localStorage.setItem('foodrescue_user', JSON.stringify(clerkUserShape));
+  };
 
   const login = async (credentials: any): Promise<UserRole> => {
     try {
@@ -166,13 +171,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
     return res.user.role;
   };
+
   const sendOTP = async (target: string): Promise<string> => {
-    const res = await apiRequest<{ message: string; demo_otp?: string }>('/auth/send-otp', {
+    const res = await apiRequest<{ message: string; otp?: string; demo_otp?: string }>('/auth/send-otp', {
       method: 'POST',
       body: JSON.stringify({ target }),
     });
-    return res.demo_otp || '123456';
+    return res.otp || res.demo_otp || '123456';
   };
+
   const loginWithOTP = async (target: string, otp: string, role?: UserRole, name?: string): Promise<UserRole> => {
     const res = await apiRequest<AuthResponse>('/auth/verify-otp', {
       method: 'POST',
@@ -184,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
     return res.user.role;
   };
+
   const loginWithGoogle = async (email: string, name: string, role?: UserRole, profileImage?: string): Promise<UserRole> => {
     const res = await apiRequest<AuthResponse>('/auth/google', {
       method: 'POST',
@@ -195,6 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
     return res.user.role;
   };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -208,8 +217,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isLoading,
-        isAuthenticated: (!!user && !!token) || (clerkEnabled && !!isSignedIn),
+        isAuthenticated: !!user && !!token,
         login,
+        dummyLogin,
         register,
         sendOTP,
         loginWithOTP,
@@ -217,6 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
       }}
     >
+      {clerkEnabled && <ClerkAuthSync onSync={handleClerkSync} />}
       {children}
     </AuthContext.Provider>
   );

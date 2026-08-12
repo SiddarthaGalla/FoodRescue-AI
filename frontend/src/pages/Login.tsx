@@ -21,7 +21,7 @@ declare global {
 const kindeEnabled = !!import.meta.env.VITE_KINDE_DOMAIN && !!import.meta.env.VITE_KINDE_CLIENT_ID;
 
 export const Login: React.FC = () => {
-  const { login, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
+  const { login, dummyLogin, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -137,6 +137,19 @@ export const Login: React.FC = () => {
     setPassword(demoCredentials[role].pass);
   };
 
+  const handleInstantDemoLogin = async (role: UserRole) => {
+    setIsSubmitting(true);
+    try {
+      const assignedRole = await dummyLogin(role, demoCredentials[role].title);
+      showToast(`Logged in as ${demoCredentials[role].title} (${assignedRole.toUpperCase()})`, 'success');
+      navigate(`/dashboard/${assignedRole}`);
+    } catch (err: any) {
+      showToast(err.message || 'Demo login failed', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleKindeLogin = async () => {
     try {
       // Triggers the Kinde hosted login redirect; session is synced on return.
@@ -223,9 +236,16 @@ export const Login: React.FC = () => {
 
           {/* Role Preview Selector */}
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-black uppercase tracking-wider text-gray-900 dark:text-gray-100 text-center">
-              TARGET PORTAL ROLE
-            </label>
+            <div className="flex items-center justify-between text-[10px] font-black tracking-wider text-gray-900 dark:text-gray-100">
+              <span className="uppercase">TARGET PORTAL ROLE</span>
+              <button
+                type="button"
+                onClick={() => handleInstantDemoLogin(selectedRole)}
+                className="text-brand-600 dark:text-brand-400 hover:underline font-bold capitalize"
+              >
+                Instant {selectedRole} Sign In &rarr;
+              </button>
+            </div>
             <div className="grid grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-900/60 border border-brand-500/20">
               {(['donor', 'ngo', 'volunteer', 'admin'] as UserRole[]).map((r) => (
                 <button
