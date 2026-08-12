@@ -19,6 +19,8 @@ async def connect_to_mongo():
         await db_instance.client.admin.command('ping')
         logger.info(f"Successfully connected to MongoDB database '{settings.DATABASE_NAME}'")
     except Exception as e:
+        db_instance.client = None
+        db_instance.db = None
         logger.warning(f"MongoDB connection failed: {e}. App will proceed with simulated memory store fallback if DB is unreachable.")
 
 async def close_mongo_connection():

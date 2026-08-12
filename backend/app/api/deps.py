@@ -8,10 +8,67 @@ from app.models.user import user_helper
 from app.schemas.user import UserRole
 from bson import ObjectId
 
+from datetime import datetime
+from app.core.security import get_password_hash
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 # In-memory mock database fallback for initial dev setup when MongoDB service isn't active
-MOCK_USERS_DB = {}
+MOCK_USERS_DB = {
+    "mock-donor-id": {
+        "id": "mock-donor-id",
+        "_id": "mock-donor-id",
+        "name": "Green Harvest Bistro",
+        "email": "donor@culinary.com",
+        "phone": "+15550100001",
+        "password": get_password_hash("DonorPass123!"),
+        "role": "donor",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=donor",
+        "isVerified": True,
+        "createdAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+    },
+    "mock-ngo-id": {
+        "id": "mock-ngo-id",
+        "_id": "mock-ngo-id",
+        "name": "Hope Shelter NGO",
+        "email": "ngo@shelterhaven.org",
+        "phone": "+15550100002",
+        "password": get_password_hash("NgoPass123!"),
+        "role": "ngo",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=ngo",
+        "isVerified": True,
+        "createdAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+    },
+    "mock-volunteer-id": {
+        "id": "mock-volunteer-id",
+        "_id": "mock-volunteer-id",
+        "name": "Alex Rescue Driver",
+        "email": "volunteer@rescue.org",
+        "phone": "+15550100003",
+        "password": get_password_hash("VolunteerPass123!"),
+        "role": "volunteer",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=volunteer",
+        "isVerified": True,
+        "createdAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+    },
+    "mock-admin-id": {
+        "id": "mock-admin-id",
+        "_id": "mock-admin-id",
+        "name": "System Administrator",
+        "email": "admin@foodrescue.org",
+        "phone": "+15550100004",
+        "password": get_password_hash("AdminPass123!"),
+        "role": "admin",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=admin",
+        "isVerified": True,
+        "createdAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+    },
+}
+
 
 async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     if not token:
@@ -72,9 +129,14 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
             if user:
                 return user_helper(user)
         except Exception:
+            pass
+
+        try:
             user = await db.users.find_one({"email": user_id})
             if user:
                 return user_helper(user)
+        except Exception:
+            pass
     
     # Check in-memory mock store
     if user_id in MOCK_USERS_DB:
