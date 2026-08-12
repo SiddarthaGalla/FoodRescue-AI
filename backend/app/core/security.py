@@ -1,10 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union, Any
 import jwt
-from passlib.context import CryptContext
-from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
 # Lazily-created JWKS clients
 _kinde_jwks_client: Optional[jwt.PyJWKClient] = None
@@ -13,10 +10,26 @@ _clerk_jwks_client: Optional[jwt.PyJWKClient] = None
 KINDE_ROLE_ORDER = ["admin", "donor", "ngo", "volunteer"]
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if not plain_password or not hashed_password:
+        return False
+    if hashed_password.startswith("$sha256$"):
+        import hashlib
+        return f"$sha256${hashlib.sha256(plain_password.encode()).hexdigest()}" == hashed_password
+    try:
+        if hashed_password.startswith("$2b$") or hashed_password.startswith("$2a$"):
+            return bcrypt.checkpw(plain_password.encode('utf-8')[:72], hashed_password.encode('utf-8'))
+        import hashlib
+        return f"$sha256${hashlib.sha256(plain_password.encode()).hexdigest()}" == hashed_password
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    try:
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode('utf-8')[:72], salt).decode('utf-8')
+    except Exception:
+        import hashlib
+        return f"$sha256${hashlib.sha256(password.encode()).hexdigest()}"
 
 def create_access_token(subject: Union[str, Any], role: str, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
