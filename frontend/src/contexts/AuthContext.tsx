@@ -217,7 +217,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isLoading,
+<<<<<<< HEAD
         isAuthenticated: !!user && !!token,
+=======
+        isAuthenticated: clerkEnabled ? !!isSignedIn : !!user && !!token,
+>>>>>>> 76556b0d64da0fa3938ec938ff134a8ca448a9c6
         login,
         dummyLogin,
         register,

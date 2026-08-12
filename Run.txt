@@ -1,0 +1,21 @@
+Terminal 1: Run Backend (FastAPI)
+Copy and paste this command into your first PowerShell / Terminal window:
+
+powershell
+cd "S:\Personal\My Projects\FoodRescue AI\FoodRescue-AI\backend"
+py -m uvicorn app.main:app --reload --port 8000
+Backend API: http://localhost:8000
+API Documentation: http://localhost:8000/docs
+
+
+Terminal 2: Run Frontend (React + Vite)
+Open a second PowerShell / Terminal window and run:
+
+powershell
+cd "S:\Personal\My Projects\FoodRescue AI\FoodRescue-AI\frontend"
+npm run dev
+Web Application: http://localhost:5173
+
+
+Step 3: Open in Browser
+Go to http://localhost:5173 in Chrome or Edge to view and test your application!
