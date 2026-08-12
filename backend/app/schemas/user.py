@@ -63,3 +63,8 @@ class GoogleAuthRequest(BaseModel):
     name: str
     profileImage: Optional[str] = None
     role: Optional[UserRole] = UserRole.DONOR
+
+class DummyLoginRequest(BaseModel):
+    role: UserRole = UserRole.DONOR
+    name: Optional[str] = None
+

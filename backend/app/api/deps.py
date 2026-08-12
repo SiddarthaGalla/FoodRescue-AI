@@ -2,16 +2,73 @@ from typing import Optional, List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
-from app.core.security import decode_access_token, verify_kinde_token, derive_role_from_kinde_payload
+from app.core.security import (
+    decode_access_token, verify_kinde_token, verify_clerk_token,
+    derive_role_from_kinde_payload, derive_role_from_clerk_payload, get_password_hash
+)
 from app.db.mongodb import get_database
 from app.models.user import user_helper
 from app.schemas.user import UserRole
 from bson import ObjectId
+from datetime import datetime
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
-# In-memory mock database fallback for initial dev setup when MongoDB service isn't active
-MOCK_USERS_DB = {}
+# Seeded in-memory mock database fallback for dev setup
+now_iso = datetime.utcnow()
+
+SEED_USERS = [
+    {
+        "id": "mock-donor-1",
+        "name": "Green Harvest Bistro",
+        "email": "donor@culinary.com",
+        "phone": "+15550100001",
+        "password": get_password_hash("DonorPass123!"),
+        "role": "donor",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=donor",
+        "isVerified": True,
+        "createdAt": now_iso,
+        "updatedAt": now_iso,
+    },
+    {
+        "id": "mock-ngo-1",
+        "name": "Hope Shelter NGO",
+        "email": "ngo@shelterhaven.org",
+        "phone": "+15550100002",
+        "password": get_password_hash("NgoPass123!"),
+        "role": "ngo",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=ngo",
+        "isVerified": True,
+        "createdAt": now_iso,
+        "updatedAt": now_iso,
+    },
+    {
+        "id": "mock-volunteer-1",
+        "name": "Alex Rescue Driver",
+        "email": "volunteer@rescue.org",
+        "phone": "+15550100003",
+        "password": get_password_hash("VolunteerPass123!"),
+        "role": "volunteer",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=volunteer",
+        "isVerified": True,
+        "createdAt": now_iso,
+        "updatedAt": now_iso,
+    },
+    {
+        "id": "mock-admin-1",
+        "name": "System Administrator",
+        "email": "admin@foodrescue.org",
+        "phone": "+15550100004",
+        "password": get_password_hash("AdminPass123!"),
+        "role": "admin",
+        "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=admin",
+        "isVerified": True,
+        "createdAt": now_iso,
+        "updatedAt": now_iso,
+    },
+]
+
+MOCK_USERS_DB = {u["id"]: u for u in SEED_USERS}
 
 async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     if not token:
@@ -20,6 +77,21 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Clerk OAuth path (enabled when CLERK_DOMAIN is set)
+    if getattr(settings, 'CLERK_DOMAIN', None):
+        clerk_payload = verify_clerk_token(token)
+        if clerk_payload:
+            clerk_user = {
+                "id": clerk_payload.get("sub"),
+                "name": clerk_payload.get("name") or clerk_payload.get("email") or "Clerk User",
+                "email": clerk_payload.get("email"),
+                "phone": None,
+                "role": derive_role_from_clerk_payload(clerk_payload),
+                "profileImage": clerk_payload.get("picture"),
+                "isVerified": True,
+            }
+            return user_helper(clerk_user)
 
     # Kinde OAuth path (enabled when KINDE_DOMAIN is set). Falls through to the
     # legacy HS256 path only when Kinde verification returns None.

@@ -6,16 +6,27 @@ from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Lazily-created, cached JWKS client for Kinde RS256 verification (created once, reused)
+# Lazily-created JWKS clients
 _kinde_jwks_client: Optional[jwt.PyJWKClient] = None
+_clerk_jwks_client: Optional[jwt.PyJWKClient] = None
 
 KINDE_ROLE_ORDER = ["admin", "donor", "ngo", "volunteer"]
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if hashed_password.startswith("$sha256$"):
+        import hashlib
+        return f"$sha256${hashlib.sha256(plain_password.encode()).hexdigest()}" == hashed_password
+    try:
+        return pwd_context.verify(plain_password[:72], hashed_password)
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    try:
+        return pwd_context.hash(password[:72])
+    except Exception:
+        import hashlib
+        return f"$sha256${hashlib.sha256(password.encode()).hexdigest()}"
 
 def create_access_token(subject: Union[str, Any], role: str, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
@@ -69,6 +80,40 @@ def verify_kinde_token(token: str) -> Optional[dict]:
         return payload
     except jwt.PyJWTError:
         return None
+
+
+def verify_clerk_token(token: str) -> Optional[dict]:
+    if not getattr(settings, 'CLERK_DOMAIN', None):
+        return None
+    global _clerk_jwks_client
+    try:
+        if _clerk_jwks_client is None:
+            jwks_url = getattr(settings, 'CLERK_JWKS_URL', None) or f"{settings.CLERK_DOMAIN.rstrip('/')}/.well-known/jwks.json"
+            _clerk_jwks_client = jwt.PyJWKClient(jwks_url)
+        payload = jwt.decode(
+            token,
+            key=_clerk_jwks_client.get_signing_key_from_jwt(token),
+            algorithms=["RS256"],
+            options={"verify_exp": True},
+        )
+        return payload
+    except jwt.PyJWTError:
+        return None
+
+
+def derive_role_from_clerk_payload(payload: dict) -> str:
+    # Clerk role can come from public_metadata or custom claim
+    public_metadata = payload.get("public_metadata") or {}
+    role_claim = public_metadata.get("role") or payload.get("role")
+    if isinstance(role_claim, str) and role_claim:
+        return role_claim
+    # Check org_role / permissions claims if configured
+    permissions = payload.get("permissions", []) or []
+    permission_set = {str(p).lower() for p in permissions if isinstance(p, str)}
+    for role in KINDE_ROLE_ORDER:
+        if role in permission_set:
+            return role
+    return "donor"
 
 
 def derive_role_from_kinde_payload(payload: dict) -> str:

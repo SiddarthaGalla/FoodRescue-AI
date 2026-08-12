@@ -4,6 +4,7 @@ frontend/node_modules/
 frontend/dist/
 frontend/.env
 *.local
+frontend/design/
 
 # Python & Backend
 backend/__pycache__/
