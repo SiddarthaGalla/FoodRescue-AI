@@ -7,6 +7,7 @@ from app.core.config import settings
 # Lazily-created JWKS clients
 _kinde_jwks_client: Optional[jwt.PyJWKClient] = None
 _clerk_jwks_client: Optional[jwt.PyJWKClient] = None
+_supabase_jwks_client: Optional[jwt.PyJWKClient] = None
 
 KINDE_ROLE_ORDER = ["admin", "donor", "ngo", "volunteer"]
 
@@ -118,6 +119,36 @@ def derive_role_from_clerk_payload(payload: dict) -> str:
         if role in permission_set:
             return role
     return "donor"
+
+
+def verify_supabase_token(token: str) -> Optional[dict]:
+    if not settings.SUPABASE_URL:
+        return None
+    global _supabase_jwks_client
+    try:
+        if _supabase_jwks_client is None:
+            _supabase_jwks_client = jwt.PyJWKClient(
+                f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+            )
+        payload = jwt.decode(
+            token,
+            key=_supabase_jwks_client.get_signing_key_from_jwt(token).key,
+            algorithms=["RS256"],
+            options={"verify_aud": False},
+        )
+        return payload
+    except jwt.PyJWTError:
+        if not settings.SUPABASE_JWT_SECRET:
+            return None
+        try:
+            return jwt.decode(
+                token,
+                key=settings.SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+            )
+        except jwt.PyJWTError:
+            return None
 
 
 def derive_role_from_kinde_payload(payload: dict) -> str:

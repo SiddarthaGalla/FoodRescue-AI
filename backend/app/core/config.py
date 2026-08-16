@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     KINDE_DOMAIN: str = ""  # e.g. "https://foodrescue.kinde.com"
     KINDE_AUDIENCE: str = ""  # optional, validated against the token if set
 
+    # Supabase Auth (empty = disabled, falls back to legacy dev auth)
+    SUPABASE_URL: str = ""  # e.g. "https://abcdefgh.supabase.co"
+    SUPABASE_JWT_SECRET: str = ""  # Project Settings -> API -> JWT Secret
+
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:3000",

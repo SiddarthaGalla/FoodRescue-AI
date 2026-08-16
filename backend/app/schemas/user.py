@@ -68,3 +68,7 @@ class DummyLoginRequest(BaseModel):
     role: UserRole = UserRole.DONOR
     name: Optional[str] = None
 
+class SupabaseAuthRequest(BaseModel):
+    token: str = Field(..., description="Supabase access token from the client session")
+    role: Optional[UserRole] = UserRole.DONOR
+

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth as useClerkAuth, useUser as useClerkUser } from '@clerk/clerk-react';
 import { User, UserRole, AuthResponse } from '../types/auth';
 import { apiRequest } from '../services/api';
+import { supabase, supabaseEnabled } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -69,6 +70,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    if (supabaseEnabled && supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) exchangeSupabaseSession().catch(() => {});
+      });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN') {
+          exchangeSupabaseSession().catch(console.error);
+        } else if (event === 'SIGNED_OUT') {
+          setToken(null);
+          setUser(null);
+          localStorage.removeItem('foodrescue_token');
+          localStorage.removeItem('foodrescue_user');
+        }
+      });
+      setIsLoading(false);
+      return () => subscription.unsubscribe();
+    }
+
     const savedToken = localStorage.getItem('foodrescue_token');
     const savedUserStr = localStorage.getItem('foodrescue_user');
 
@@ -84,6 +103,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  const exchangeSupabaseSession = async (): Promise<UserRole> => {
+    if (!supabase) throw new Error('Supabase is not configured');
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (!data.session) throw new Error('No active Supabase session');
+    const res = await apiRequest<AuthResponse>('/auth/supabase', {
+      method: 'POST',
+      body: JSON.stringify({ token: data.session.access_token }),
+    });
+    setToken(res.access_token);
+    setUser(res.user);
+    localStorage.setItem('foodrescue_token', res.access_token);
+    localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+    return res.user.role;
+  };
+
   const handleClerkSync = (clerkToken: string, clerkUserShape: User) => {
     setToken(clerkToken);
     setUser(clerkUserShape);
@@ -92,6 +127,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (credentials: any): Promise<UserRole> => {
+    if (supabaseEnabled && supabase) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+      if (error) throw new Error(error.message);
+      return exchangeSupabaseSession();
+    }
     try {
       const res = await apiRequest<AuthResponse>('/auth/login', {
         method: 'POST',
@@ -161,6 +204,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (userData: any): Promise<UserRole> => {
+    if (supabaseEnabled && supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: { data: { name: userData.name, role: userData.role || 'donor' } },
+      });
+      if (error) throw new Error(error.message);
+      if (data.session) return exchangeSupabaseSession();
+      throw new Error('Account created! Check your email to confirm before signing in.');
+    }
     const res = await apiRequest<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
@@ -173,6 +226,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendOTP = async (target: string): Promise<string> => {
+    if (supabaseEnabled && supabase) {
+      const { error } = await supabase.auth.signInWithOtp({ email: target });
+      if (error) throw new Error(error.message);
+      return '';
+    }
     const res = await apiRequest<{ message: string; otp?: string; demo_otp?: string }>('/auth/send-otp', {
       method: 'POST',
       body: JSON.stringify({ target }),
@@ -181,6 +239,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithOTP = async (target: string, otp: string, role?: UserRole, name?: string): Promise<UserRole> => {
+    if (supabaseEnabled && supabase) {
+      const { error } = await supabase.auth.verifyOtp({ email: target, token: otp, type: 'email' });
+      if (error) throw new Error(error.message);
+      return exchangeSupabaseSession();
+    }
     const res = await apiRequest<AuthResponse>('/auth/verify-otp', {
       method: 'POST',
       body: JSON.stringify({ target, otp, role, name }),
@@ -193,6 +256,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = async (email: string, name: string, role?: UserRole, profileImage?: string): Promise<UserRole> => {
+    if (supabaseEnabled && supabase) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) throw new Error(error.message);
+      return exchangeSupabaseSession();
+    }
     const res = await apiRequest<AuthResponse>('/auth/google', {
       method: 'POST',
       body: JSON.stringify({ email, name, role, profileImage }),
@@ -205,6 +276,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    if (supabaseEnabled && supabase) {
+      supabase.auth.signOut().catch(console.error);
+    }
     setToken(null);
     setUser(null);
     localStorage.removeItem('foodrescue_token');

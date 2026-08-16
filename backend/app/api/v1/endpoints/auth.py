@@ -7,11 +7,12 @@ from app.schemas.user import (
     ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
     SendOTPRequest, VerifyOTPRequest, GoogleAuthRequest, DummyLoginRequest, UserRole
 )
-from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.security import get_password_hash, verify_password, create_access_token, verify_supabase_token
 from app.db.mongodb import get_database
 from app.models.user import user_helper
 from app.api.deps import get_current_user, MOCK_USERS_DB
 from app.services.otp_service import send_realtime_otp, verify_otp_code
+from app.schemas.user import SupabaseAuthRequest
 
 router = APIRouter()
 
@@ -243,6 +244,81 @@ async def google_auth(req: GoogleAuthRequest) -> Any:
         "access_token": access_token,
         "token_type": "bearer",
         "user": formatted_user
+    }
+
+@router.post("/supabase", response_model=Token)
+async def supabase_auth(req: SupabaseAuthRequest) -> Any:
+    payload = verify_supabase_token(req.token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Supabase token",
+        )
+
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Supabase token is missing an email claim",
+        )
+
+    metadata = payload.get("user_metadata") or {}
+    name = metadata.get("name") or payload.get("name") or email.split("@")[0]
+    profile_image = metadata.get("avatar_url") or metadata.get("picture")
+
+    db = get_database()
+    found_user = None
+
+    if db is not None:
+        try:
+            found_user = await db.users.find_one({"email": email})
+        except Exception:
+            pass
+
+    if not found_user:
+        for u in MOCK_USERS_DB.values():
+            if u.get("email") == email:
+                found_user = u
+                break
+
+    now = datetime.utcnow()
+    role_val = found_user.get("role") if found_user else (req.role.value if req.role else "donor")
+
+    if not found_user:
+        user_doc = {
+            "name": name,
+            "email": email,
+            "phone": None,
+            "password": get_password_hash("SupabaseVerifiedPass123!"),
+            "role": role_val,
+            "profileImage": profile_image or f"https://api.dicebear.com/7.x/avataaars/svg?seed={email}",
+            "isVerified": True,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+        user_id = str(uuid.uuid4())
+        if db is not None:
+            try:
+                res = await db.users.insert_one(user_doc)
+                user_id = str(res.inserted_id)
+                user_doc["_id"] = res.inserted_id
+            except Exception:
+                user_doc["id"] = user_id
+                MOCK_USERS_DB[user_id] = user_doc
+        else:
+            user_doc["id"] = user_id
+            MOCK_USERS_DB[user_id] = user_doc
+
+        found_user = user_doc
+
+    user_id = str(found_user.get("_id", found_user.get("id")))
+    formatted_user = user_helper(found_user)
+    access_token = create_access_token(subject=user_id, role=role_val)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": formatted_user,
     }
 
 @router.post("/dummy-login", response_model=Token)
