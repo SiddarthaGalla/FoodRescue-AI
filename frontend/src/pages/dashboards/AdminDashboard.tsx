@@ -12,21 +12,16 @@ export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
 
   const stats = [
-    { title: 'Total Registered Users', value: '4,280', change: '+12% this week', icon: Users },
-    { title: 'Active Donors', value: '1,120', change: '84% active rate', icon: Building2 },
-    { title: 'Verified Shelter NGOs', value: '890', change: 'Across 42 regions', icon: Shield },
-    { title: 'Total Meals Rescued', value: '1.45M', change: '+35k today', icon: Package },
+    { title: 'Total Registered Users', value: '0', change: 'Awaiting data', icon: Users },
+    { title: 'Active Donors', value: '0', change: 'Awaiting data', icon: Building2 },
+    { title: 'Verified Shelter NGOs', value: '0', change: 'Awaiting data', icon: Shield },
+    { title: 'Total Meals Rescued', value: '0', change: 'Awaiting data', icon: Package },
   ];
 
-  const recentLogs = [
-    { time: '10 mins ago', type: 'User Approved', detail: 'Metro Banquet Hall verified as Enterprise Donor', status: 'success' },
-    { time: '25 mins ago', type: 'System Alert', detail: 'Route optimization latency auto-resolved', status: 'info' },
-    { time: '1 hour ago', type: 'Dispatched', detail: '450 portions delivered to St. Jude Shelter', status: 'success' },
-    { time: '3 hours ago', type: 'NGO Onboarded', detail: 'Community Harvest Center completed verification', status: 'success' },
-  ];
+  const recentLogs: { time: string; type: string; detail: string; status: string }[] = [];
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] bg-mesh-light dark:bg-mesh-dark">
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-5rem)] bg-mesh-light dark:bg-mesh-dark">
       <Sidebar role="admin" />
 
       <main className="flex-1 p-6 md:p-8 space-y-8 overflow-y-auto">
@@ -87,21 +82,13 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white">Platform Rescue Volume (30 Days)</h3>
               <span className="text-xs font-semibold text-brand-600 dark:text-brand-400 flex items-center gap-1">
-                <TrendingUp className="w-4 h-4" /> +18.4% growth
+                <TrendingUp className="w-4 h-4" /> Awaiting data
               </span>
             </div>
-            
-            {/* Visual SVG Chart Bar simulation */}
-            <div className="h-48 flex items-end justify-between gap-2 pt-6">
-              {[40, 65, 50, 85, 90, 75, 100, 110, 95, 120, 135, 150].map((val, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-                  <div 
-                    style={{ height: `${(val / 150) * 100}%` }}
-                    className="w-full bg-gradient-to-t from-brand-600 to-emerald-400 rounded-t-lg group-hover:brightness-125 transition-all"
-                  />
-                  <span className="text-[9px] text-gray-400">W{i + 1}</span>
-                </div>
-              ))}
+
+            {/* Chart Placeholder */}
+            <div className="h-48 flex items-center justify-center rounded-2xl bg-brand-500/5 border border-brand-500/10">
+              <p className="text-xs text-gray-500 dark:text-gray-400">No data yet — charts appear once donations flow through the platform.</p>
             </div>
           </div>
 
@@ -109,6 +96,11 @@ export const AdminDashboard: React.FC = () => {
           <div className="lg:col-span-5 p-6 rounded-3xl glass-card border border-brand-500/20 space-y-4">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">Live System Audit</h3>
             <div className="space-y-3">
+              {recentLogs.length === 0 && (
+                <div className="p-4 rounded-2xl bg-brand-500/5 border border-brand-500/10 text-center text-xs text-gray-500 dark:text-gray-400">
+                  No system activity yet.
+                </div>
+              )}
               {recentLogs.map((log, idx) => (
                 <div key={idx} className="p-3 rounded-2xl bg-brand-500/5 border border-brand-500/10 flex items-start gap-3">
                   <CheckCircle className="w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5" />

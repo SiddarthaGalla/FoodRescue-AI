@@ -13,6 +13,7 @@ def donation_helper(donation: Dict[str, Any]) -> Dict[str, Any]:
         "pickupWindowStart": donation.get("pickupWindowStart"),
         "pickupWindowEnd": donation.get("pickupWindowEnd"),
         "photoUrl": donation.get("photoUrl"),
+        "estimatedValue": donation.get("estimatedValue"),
         "donorId": str(donation.get("donorId")),
         "donorName": donation.get("donorName"),
         "status": donation.get("status", "available"),

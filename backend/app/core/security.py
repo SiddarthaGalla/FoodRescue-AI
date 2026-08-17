@@ -8,6 +8,7 @@ from app.core.config import settings
 _kinde_jwks_client: Optional[jwt.PyJWKClient] = None
 _clerk_jwks_client: Optional[jwt.PyJWKClient] = None
 _supabase_jwks_client: Optional[jwt.PyJWKClient] = None
+_supabase_jwks_client: Optional[jwt.PyJWKClient] = None
 
 KINDE_ROLE_ORDER = ["admin", "donor", "ngo", "volunteer"]
 
@@ -133,7 +134,7 @@ def verify_supabase_token(token: str) -> Optional[dict]:
         payload = jwt.decode(
             token,
             key=_supabase_jwks_client.get_signing_key_from_jwt(token).key,
-            algorithms=["RS256"],
+            algorithms=["RS256", "ES256"],
             options={"verify_aud": False},
         )
         return payload

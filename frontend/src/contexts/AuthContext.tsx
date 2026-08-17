@@ -22,6 +22,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+let pendingSupabaseRole: UserRole | undefined =
+  (localStorage.getItem('pendingSupabaseRole') as UserRole) || undefined;
+
 const ClerkAuthSync: React.FC<{
   onSync: (token: string, user: User) => void;
 }> = ({ onSync }) => {
@@ -103,15 +106,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const exchangeSupabaseSession = async (): Promise<UserRole> => {
+  const exchangeSupabaseSession = async (role?: UserRole): Promise<UserRole> => {
     if (!supabase) throw new Error('Supabase is not configured');
+    if (role) {
+      pendingSupabaseRole = role;
+      localStorage.setItem('pendingSupabaseRole', role);
+    }
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
     if (!data.session) throw new Error('No active Supabase session');
     const res = await apiRequest<AuthResponse>('/auth/supabase', {
       method: 'POST',
-      body: JSON.stringify({ token: data.session.access_token }),
+      body: JSON.stringify({
+        token: data.session.access_token,
+        ...(pendingSupabaseRole ? { role: pendingSupabaseRole } : {}),
+      }),
     });
+    pendingSupabaseRole = undefined;
+    localStorage.removeItem('pendingSupabaseRole');
     setToken(res.access_token);
     setUser(res.user);
     localStorage.setItem('foodrescue_token', res.access_token);
@@ -133,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: credentials.password,
       });
       if (error) throw new Error(error.message);
-      return exchangeSupabaseSession();
+      return exchangeSupabaseSession(credentials.role);
     }
     try {
       const res = await apiRequest<AuthResponse>('/auth/login', {
@@ -211,7 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: { data: { name: userData.name, role: userData.role || 'donor' } },
       });
       if (error) throw new Error(error.message);
-      if (data.session) return exchangeSupabaseSession();
+      if (data.session) return exchangeSupabaseSession(userData.role);
       throw new Error('Account created! Check your email to confirm before signing in.');
     }
     const res = await apiRequest<AuthResponse>('/auth/register', {
@@ -242,7 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (supabaseEnabled && supabase) {
       const { error } = await supabase.auth.verifyOtp({ email: target, token: otp, type: 'email' });
       if (error) throw new Error(error.message);
-      return exchangeSupabaseSession();
+      return exchangeSupabaseSession(role);
     }
     const res = await apiRequest<AuthResponse>('/auth/verify-otp', {
       method: 'POST',
@@ -259,10 +271,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (supabaseEnabled && supabase) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: `${window.location.origin}/login` },
       });
       if (error) throw new Error(error.message);
-      return exchangeSupabaseSession();
+      return exchangeSupabaseSession(role);
     }
     const res = await apiRequest<AuthResponse>('/auth/google', {
       method: 'POST',

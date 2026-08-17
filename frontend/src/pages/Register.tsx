@@ -5,6 +5,7 @@ import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyR
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { UserRole } from '../types/auth';
+import { supabaseEnabled } from '../lib/supabase';
 import { slideUp, buttonPress } from '../animations/variants';
 
 declare global {
@@ -48,6 +49,8 @@ export const Register: React.FC = () => {
   ];
 
   useEffect(() => {
+    if (supabaseEnabled) return;
+
     const initGoogleGIS = () => {
       if (window.google?.accounts?.id) {
         try {
@@ -90,6 +93,19 @@ export const Register: React.FC = () => {
         "https://api.dicebear.com/7.x/avataaars/svg?seed=googledevice"
       );
       showToast(`Google Device Registration successful! Welcome`, 'success');
+      navigate(`/dashboard/${assignedRole}`);
+    } catch (err: any) {
+      showToast(err.message || 'Google Auth failed', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSupabaseGoogle = async () => {
+    setIsSubmitting(true);
+    try {
+      const assignedRole = await loginWithGoogle('', '', role);
+      showToast(`Google Registration successful! Welcome`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
       showToast(err.message || 'Google Auth failed', 'error');
@@ -260,10 +276,10 @@ export const Register: React.FC = () => {
           {/* Single Official Native Google Identity Services Button */}
           <div className="space-y-2">
             <div ref={googleButtonRef} className="w-full flex justify-center" />
-            {(!window.google?.accounts?.id) && (
+            {(supabaseEnabled || !window.google?.accounts?.id) && (
               <button
                 type="button"
-                onClick={triggerGoogleNativeOAuth}
+                onClick={supabaseEnabled ? handleSupabaseGoogle : triggerGoogleNativeOAuth}
                 className="w-full py-3 px-4 rounded-full glass-card border border-gray-300 dark:border-gray-700 hover:border-brand-500 text-xs font-extrabold text-gray-900 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">

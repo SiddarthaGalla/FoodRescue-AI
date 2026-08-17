@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { UserRole } from '../types/auth';
+import { supabaseEnabled } from '../lib/supabase';
 import { slideUp, buttonPress } from '../animations/variants';
 
 declare global {
@@ -21,9 +22,15 @@ declare global {
 const kindeEnabled = !!import.meta.env.VITE_KINDE_DOMAIN && !!import.meta.env.VITE_KINDE_CLIENT_ID;
 
 export const Login: React.FC = () => {
-  const { login, dummyLogin, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
+  const { user, login, dummyLogin, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (supabaseEnabled && user) {
+      navigate(`/dashboard/${user.role}`, { replace: true });
+    }
+  }, [user]);
 
   const [authMode, setAuthMode] = useState<'password' | 'otp'>('password');
   
@@ -51,6 +58,8 @@ export const Login: React.FC = () => {
   };
 
   useEffect(() => {
+    if (supabaseEnabled) return;
+
     const initGoogleGIS = () => {
       if (window.google?.accounts?.id) {
         try {
@@ -99,6 +108,19 @@ export const Login: React.FC = () => {
       }
       const assignedRole = await loginWithGoogle(email, name, selectedRole, picture);
       showToast(`Google Sign-In successful! Welcome ${name}`, 'success');
+      navigate(`/dashboard/${assignedRole}`);
+    } catch (err: any) {
+      showToast(err.message || 'Google Auth failed', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSupabaseGoogle = async () => {
+    setIsSubmitting(true);
+    try {
+      const assignedRole = await loginWithGoogle('', '', selectedRole);
+      showToast(`Google Sign-In successful!`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
       showToast(err.message || 'Google Auth failed', 'error');
@@ -167,7 +189,7 @@ export const Login: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
-      const assignedRole = await login({ email, password, rememberMe });
+      const assignedRole = await login({ email, password, rememberMe, role: selectedRole });
       showToast(`Logged in successfully as ${assignedRole.toUpperCase()}`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
@@ -287,11 +309,11 @@ export const Login: React.FC = () => {
           {/* Single Official Google Identity Services Button */}
           <div className="space-y-2">
             <div ref={googleButtonRef} className="w-full flex justify-center" />
-            {/* Fallback button if Google script hasn't loaded yet */}
-            {(!window.google?.accounts?.id) && (
+            {/* Fallback button if Google script hasn't loaded yet (or Supabase handles Google) */}
+            {(supabaseEnabled || !window.google?.accounts?.id) && (
               <button
                 type="button"
-                onClick={triggerGoogleNativeOAuth}
+                onClick={supabaseEnabled ? handleSupabaseGoogle : triggerGoogleNativeOAuth}
                 className="w-full py-3 px-4 rounded-full glass-card border border-gray-300 dark:border-gray-700 hover:border-brand-500 text-xs font-black text-gray-900 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">

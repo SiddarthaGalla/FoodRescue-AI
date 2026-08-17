@@ -282,7 +282,7 @@ async def supabase_auth(req: SupabaseAuthRequest) -> Any:
                 break
 
     now = datetime.utcnow()
-    role_val = found_user.get("role") if found_user else (req.role.value if req.role else "donor")
+    role_val = req.role.value if req.role else (found_user.get("role") if found_user else "donor")
 
     if not found_user:
         user_doc = {
@@ -310,6 +310,32 @@ async def supabase_auth(req: SupabaseAuthRequest) -> Any:
             MOCK_USERS_DB[user_id] = user_doc
 
         found_user = user_doc
+
+    if found_user and (profile_image or (found_user.get("role") != role_val)):
+        now = datetime.utcnow()
+        update_fields = {"updatedAt": now}
+        if profile_image:
+            update_fields["profileImage"] = profile_image
+        if not found_user.get("name"):
+            update_fields["name"] = name
+        if found_user.get("role") != role_val:
+            update_fields["role"] = role_val
+
+        db = get_database()
+        if db is not None:
+            try:
+                from bson import ObjectId
+                db.users.update_one(
+                    {"_id": ObjectId(found_user.get("_id"))},
+                    {"$set": update_fields},
+                )
+            except Exception:
+                pass
+
+        mock_key = str(found_user.get("id") or found_user.get("_id"))
+        if mock_key in MOCK_USERS_DB:
+            MOCK_USERS_DB[mock_key].update(update_fields)
+        found_user.update(update_fields)
 
     user_id = str(found_user.get("_id", found_user.get("id")))
     formatted_user = user_helper(found_user)

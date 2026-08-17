@@ -113,6 +113,7 @@ async def create_donation(
         "pickupWindowStart": donation_in.pickupWindowStart,
         "pickupWindowEnd": donation_in.pickupWindowEnd,
         "photoUrl": donation_in.photoUrl,
+        "estimatedValue": donation_in.estimatedValue,
         "donorId": current_user["id"],
         "donorName": current_user.get("name"),
         "status": DonationStatus.AVAILABLE.value,
@@ -139,7 +140,12 @@ async def list_donations(current_user: dict = Depends(get_current_user)):
             if role == UserRole.DONOR.value:
                 query = {"donorId": current_user["id"]}
             elif role == UserRole.NGO.value:
-                query = {"status": DonationStatus.AVAILABLE.value}
+                query = {
+                    "$or": [
+                        {"status": DonationStatus.AVAILABLE.value},
+                        {"claimedBy": current_user["id"]},
+                    ]
+                }
             elif role == UserRole.VOLUNTEER.value:
                 query = {"assignedVolunteerId": current_user["id"]}
             cursor = db.donations.find(query).sort("createdAt", -1)
@@ -152,7 +158,10 @@ async def list_donations(current_user: dict = Depends(get_current_user)):
     for d in MOCK_DONATIONS_DB.values():
         if role == UserRole.DONOR.value and d.get("donorId") != current_user["id"]:
             continue
-        if role == UserRole.NGO.value and d.get("status") != DonationStatus.AVAILABLE.value:
+        if role == UserRole.NGO.value and not (
+            d.get("status") == DonationStatus.AVAILABLE.value
+            or d.get("claimedBy") == current_user["id"]
+        ):
             continue
         if role == UserRole.VOLUNTEER.value and d.get("assignedVolunteerId") != current_user["id"]:
             continue

@@ -20,6 +20,7 @@ class DonationBase(BaseModel):
     pickupWindowStart: datetime
     pickupWindowEnd: datetime
     photoUrl: Optional[str] = Field(None, max_length=500)
+    estimatedValue: Optional[float] = Field(None, gt=0, description="Estimated USD value per portion (for tax deductions)")
 
 class DonationCreate(DonationBase):
     pass
@@ -34,6 +35,7 @@ class DonationUpdate(BaseModel):
     pickupWindowStart: Optional[datetime] = None
     pickupWindowEnd: Optional[datetime] = None
     photoUrl: Optional[str] = Field(None, max_length=500)
+    estimatedValue: Optional[float] = Field(None, gt=0)
 
 class AssignVolunteerRequest(BaseModel):
     volunteerId: str

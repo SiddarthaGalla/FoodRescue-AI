@@ -9,10 +9,10 @@ import { slideUp, staggerContainer, cardHover, buttonPress, floatingAnimation } 
 
 export const Home: React.FC = () => {
   const stats = [
-    { label: 'Meals Rescued', value: '1,450,000+', icon: Leaf, change: '+24% this month' },
-    { label: 'Partner NGOs', value: '890+', icon: Building2, change: 'Across 45 cities' },
-    { label: 'CO₂ Offset', value: '520 Tons', icon: TrendingUp, change: 'Equivalent to 25k trees' },
-    { label: 'Active Volunteers', value: '3,400+', icon: Users, change: 'Avg 18min response' },
+    { label: 'Meals Rescued', value: '0', icon: Leaf, change: 'Awaiting data' },
+    { label: 'Partner NGOs', value: '0', icon: Building2, change: 'Awaiting data' },
+    { label: 'CO₂ Offset', value: '0 Tons', icon: TrendingUp, change: 'Awaiting data' },
+    { label: 'Active Volunteers', value: '0', icon: Users, change: 'Awaiting data' },
   ];
 
   const features = [
@@ -25,7 +25,7 @@ export const Home: React.FC = () => {
     {
       icon: Truck,
       title: 'Dynamic Route Dispatch',
-      description: 'Generates optimal, low-emission pickup routes for volunteers to guarantee hot meal delivery in under 45 minutes.',
+      description: 'Generates optimal, low-emission pickup routes for volunteers to guarantee fast, safe hot meal delivery.',
       image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&auto=format&fit=crop&q=80',
     },
     {
@@ -76,19 +76,19 @@ export const Home: React.FC = () => {
   const testimonials = [
     {
       name: 'Executive Culinary Partner',
-      role: 'Horizon Hotel & Resort Alliance',
+      role: 'Hotel & Restaurant Alliance',
       image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=150&auto=format&fit=crop&q=80',
-      text: 'FoodRescue AI transformed how our 5-star hotel manages surplus banquet meals. We rescued 14,000 hot meals last quarter effortlessly.',
+      text: 'FoodRescue AI transformed how our 5-star hotel manages surplus banquet meals. We rescue thousands of hot meals every month effortlessly.',
     },
     {
       name: 'Program Director',
-      role: 'Hope Community Haven NGO Network',
+      role: 'Community NGO Network',
       image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-      text: 'The AI notification system alerts us 2 hours before food arrives. It has increased our meal distribution efficiency by over 300%.',
+      text: 'The AI notification system alerts us well in advance before food arrives. It has significantly increased our meal distribution efficiency.',
     },
     {
       name: 'Community Route Captain',
-      role: 'Regional Volunteer Logistics Fleet',
+      role: 'Regional Volunteer Fleet',
       image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
       text: 'The route optimization app makes food rescue seamless during my evening commute. Every delivery feels directly impactful.',
     },
@@ -152,11 +152,11 @@ export const Home: React.FC = () => {
             {/* Quick Metrics */}
             <motion.div variants={slideUp} className="pt-5 border-t border-gray-200 dark:border-gray-800/80 grid grid-cols-3 gap-2 sm:gap-6 text-center sm:text-left">
               <div>
-                <p className="text-lg sm:text-2xl font-black text-brand-700 dark:text-brand-400">99.4%</p>
+                <p className="text-lg sm:text-2xl font-black text-brand-700 dark:text-brand-400">—</p>
                 <p className="text-[10px] sm:text-xs font-black text-gray-800 dark:text-gray-200">Match Accuracy</p>
               </div>
               <div>
-                <p className="text-lg sm:text-2xl font-black text-brand-700 dark:text-brand-400">&lt; 35m</p>
+                <p className="text-lg sm:text-2xl font-black text-brand-700 dark:text-brand-400">—</p>
                 <p className="text-[10px] sm:text-xs font-black text-gray-800 dark:text-gray-200">Avg Rescue Time</p>
               </div>
               <div>
@@ -188,7 +188,7 @@ export const Home: React.FC = () => {
                     <span className="px-2.5 py-0.5 text-[9px] font-black uppercase rounded-md bg-brand-500 text-white">
                       Live Surplus Match
                     </span>
-                    <h4 className="text-xs sm:text-sm font-black mt-1 text-white">Fresh Catering Surplus • 140 Portions</h4>
+                    <h4 className="text-xs sm:text-sm font-black mt-1 text-white">Latest Surplus Match</h4>
                   </div>
                 </div>
               </div>
@@ -196,16 +196,16 @@ export const Home: React.FC = () => {
               <div className="p-3 sm:p-4 rounded-2xl bg-brand-500/10 dark:bg-brand-950/50 border border-brand-500/30 space-y-2">
                 <div className="flex justify-between text-xs font-black text-gray-900 dark:text-white">
                   <span>Logistics Route Optimization</span>
-                  <span className="text-brand-700 dark:text-brand-400">98% Efficient</span>
+                  <span className="text-brand-700 dark:text-brand-400">Awaiting data</span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-brand-600 to-emerald-400 h-full w-[98%]" />
+                  <div className="bg-gradient-to-r from-brand-600 to-emerald-400 h-full w-[0%]" />
                 </div>
               </div>
 
               <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-black text-gray-800 dark:text-gray-200">
-                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" /> Prep: 20m ago</span>
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" /> 1.8 mi away</span>
+                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" /> Prep: —</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" /> — mi away</span>
               </div>
             </motion.div>
           </motion.div>
