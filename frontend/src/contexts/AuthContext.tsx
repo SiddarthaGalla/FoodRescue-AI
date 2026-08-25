@@ -73,37 +73,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (supabaseEnabled && supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) exchangeSupabaseSession().catch(() => {});
-      });
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        if (event === 'SIGNED_IN') {
-          exchangeSupabaseSession().catch(console.error);
-        } else if (event === 'SIGNED_OUT') {
-          setToken(null);
-          setUser(null);
-          localStorage.removeItem('foodrescue_token');
-          localStorage.removeItem('foodrescue_user');
-        }
-      });
-      setIsLoading(false);
-      return () => subscription.unsubscribe();
-    }
+    let mounted = true;
 
+    // Safety timeout - ensure loading never stuck
+    const safetyTimer = setTimeout(() => {
+      if (mounted) setIsLoading(false);
+    }, 3000);
+
+    // Restore from localStorage first (works for all auth modes)
     const savedToken = localStorage.getItem('foodrescue_token');
     const savedUserStr = localStorage.getItem('foodrescue_user');
 
-    if (savedToken && savedUserStr) {
+    const validateToken = async (token: string) => {
       try {
-        const parsedUser = JSON.parse(savedUserStr);
-        setToken(savedToken);
-        setUser(parsedUser);
+        const res = await apiRequest<{ user: any }>('/auth/me');
+        return res.user;
       } catch (e) {
-        console.warn('Failed to parse saved user from localStorage', e);
+        return null;
       }
+    };
+
+    // Use an async IIFE to handle token validation
+    (async () => {
+      if (savedToken && savedUserStr) {
+        try {
+          const parsedUser = JSON.parse(savedUserStr);
+          if (mounted) {
+            setToken(savedToken);
+            setUser(parsedUser);
+          }
+          // Validate token with backend; clear if invalid
+          const validUser = await validateToken(savedToken);
+          if (mounted) {
+            if (!validUser) {
+              setToken(null);
+              setUser(null);
+              localStorage.removeItem('foodrescue_token');
+              localStorage.removeItem('foodrescue_user');
+            } else {
+              // Update user with fresh data from backend
+              setUser(validUser);
+              localStorage.setItem('foodrescue_user', JSON.stringify(validUser));
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved user from localStorage', e);
+        }
+      } else if (mounted) {
+        setIsLoading(false);
+      }
+    })();
+
+    // Supabase background sync — only exchange if returning from OAuth (pending role)
+    if (supabaseEnabled && supabase) {
+      const pending = localStorage.getItem('pendingSupabaseRole') as UserRole | null;
+      if (pending) {
+        exchangeSupabaseSession(pending).catch(() => {});
+      }
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN') {
+          const newPending = localStorage.getItem('pendingSupabaseRole') as UserRole | null;
+          exchangeSupabaseSession(newPending ?? undefined).catch(console.error);
+        } else if (event === 'SIGNED_OUT') {
+          if (mounted) {
+            setToken(null);
+            setUser(null);
+            localStorage.removeItem('foodrescue_token');
+            localStorage.removeItem('foodrescue_user');
+          }
+        }
+      });
+      if (!mounted) return;
+      return () => subscription.unsubscribe();
     }
-    setIsLoading(false);
+
+    // If no token to validate, stop loading immediately
+    if (!savedToken && mounted) setIsLoading(false);
+
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   const exchangeSupabaseSession = async (role?: UserRole): Promise<UserRole> => {
@@ -122,8 +173,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...(pendingSupabaseRole ? { role: pendingSupabaseRole } : {}),
       }),
     });
+    const requested = pendingSupabaseRole;
     pendingSupabaseRole = undefined;
     localStorage.removeItem('pendingSupabaseRole');
+    if (requested && res.user.role !== requested) {
+      // Never accept a silent role downgrade — surface it so the login page
+      // stays on the chosen role instead of bouncing to another dashboard.
+      const msg = requested === 'admin'
+        ? 'Admin access requires approval from the platform owner. Request access from your dashboard, then sign in again once approved.'
+        : `Your account is not authorized for the ${requested} role.`;
+      throw new Error(msg);
+    }
     setToken(res.access_token);
     setUser(res.user);
     localStorage.setItem('foodrescue_token', res.access_token);
@@ -158,29 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
       return res.user.role;
     } catch (err: any) {
-      console.warn('API /auth/login error, using client demo fallback:', err);
-      const email = (credentials.email || '').toLowerCase();
-      let derivedRole: UserRole = 'donor';
-      if (email.includes('admin')) derivedRole = 'admin';
-      else if (email.includes('ngo')) derivedRole = 'ngo';
-      else if (email.includes('volunteer')) derivedRole = 'volunteer';
-      else if (email.includes('donor')) derivedRole = 'donor';
-
-      const mockUser: User = {
-        id: `mock-${derivedRole}-fallback`,
-        name: email.split('@')[0] || 'Demo User',
-        email: credentials.email || `${derivedRole}@foodrescue.org`,
-        role: derivedRole,
-        isVerified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const mockToken = `mock-token-${derivedRole}-${Date.now()}`;
-      setToken(mockToken);
-      setUser(mockUser);
-      localStorage.setItem('foodrescue_token', mockToken);
-      localStorage.setItem('foodrescue_user', JSON.stringify(mockUser));
-      return derivedRole;
+      throw err;
     }
   };
 
@@ -196,22 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
       return res.user.role;
     } catch (err: any) {
-      console.warn('API /auth/dummy-login error, using instant client fallback:', err);
-      const mockUser: User = {
-        id: `dummy-${role}-client`,
-        name: name || `Demo ${role.toUpperCase()} User`,
-        email: `${role}@foodrescue.org`,
-        role: role,
-        isVerified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const mockToken = `mock-token-${role}-${Date.now()}`;
-      setToken(mockToken);
-      setUser(mockUser);
-      localStorage.setItem('foodrescue_token', mockToken);
-      localStorage.setItem('foodrescue_user', JSON.stringify(mockUser));
-      return role;
+      throw err;
     }
   };
 
@@ -238,20 +261,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendOTP = async (target: string): Promise<string> => {
-    if (supabaseEnabled && supabase) {
+    const isPhone = target.startsWith('+');
+    // Phone OTP always uses our backend (Twilio SMS). Email OTP uses Supabase
+    // when enabled, else the backend. The code is NEVER returned to the client.
+    if (!isPhone && supabaseEnabled && supabase) {
       const { error } = await supabase.auth.signInWithOtp({ email: target });
       if (error) throw new Error(error.message);
-      return '';
+      return 'sent';
     }
-    const res = await apiRequest<{ message: string; otp?: string; demo_otp?: string }>('/auth/send-otp', {
+    const res = await apiRequest<{ message: string; expires_in_minutes?: number }>('/auth/send-otp', {
       method: 'POST',
       body: JSON.stringify({ target }),
     });
-    return res.otp || res.demo_otp || '123456';
+    return res.message || 'sent';
   };
 
   const loginWithOTP = async (target: string, otp: string, role?: UserRole, name?: string): Promise<UserRole> => {
-    if (supabaseEnabled && supabase) {
+    const isPhone = target.startsWith('+');
+    if (!isPhone && supabaseEnabled && supabase) {
       const { error } = await supabase.auth.verifyOtp({ email: target, token: otp, type: 'email' });
       if (error) throw new Error(error.message);
       return exchangeSupabaseSession(role);
@@ -269,9 +296,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async (email: string, name: string, role?: UserRole, profileImage?: string): Promise<UserRole> => {
     if (supabaseEnabled && supabase) {
+      if (role) {
+        pendingSupabaseRole = role;
+        localStorage.setItem('pendingSupabaseRole', role);
+      }
+      const { data: existingSession } = await supabase.auth.getSession();
+      if (existingSession.session) {
+        return exchangeSupabaseSession(role);
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/login` },
+        options: { 
+          redirectTo: `${window.location.origin}/login`,
+          queryParams: { prompt: 'select_account' }
+        },
       });
       if (error) throw new Error(error.message);
       return exchangeSupabaseSession(role);

@@ -1,10 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Package, Plus, Truck, 
-  Leaf, Award, RefreshCw, MapPin, Clock, X, Receipt, Loader2
+  Leaf, Award, RefreshCw, MapPin, Clock, X, Receipt, Loader2,
+  Camera, X as XIcon, RotateCcw, AlertCircle, CheckCircle2, MapPin as MapPinIcon
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Sidebar } from '../../components/common/Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -12,7 +15,7 @@ import { apiRequest } from '../../services/api';
 import { Donation, DonationStatus } from '../../types/donation';
 import { cardHover } from '../../animations/variants';
 
-type Tab = 'overview' | 'listings' | 'pickups' | 'tax';
+type Tab = 'overview' | 'listings' | 'pickups';
 
 const STATUS_STYLES: Record<DonationStatus, string> = {
   available: 'bg-brand-500/10 text-brand-700 dark:text-brand-400 border-brand-500/20',
@@ -40,7 +43,7 @@ export const DonorDashboard: React.FC = () => {
 
   const tab: Tab = location.pathname.includes('/listings') ? 'listings'
     : location.pathname.includes('/pickups') ? 'pickups'
-    : location.pathname.includes('/tax') ? 'tax'
+    
     : 'overview';
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,9 +59,19 @@ export const DonorDashboard: React.FC = () => {
     pickupLocation: '',
     pickupWindowStart: '',
     pickupWindowEnd: '',
-    estimatedValue: '',
+    photoUrl: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [photoLocation, setPhotoLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [photoAddress, setPhotoAddress] = useState<string>('');
+
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const mapRef = useRef<any>(null);
 
   const fetchDonations = useCallback(async () => {
     setLoading(true);
@@ -83,23 +96,216 @@ export const DonorDashboard: React.FC = () => {
   const totalPortions = active.reduce((sum, d) => sum + (d.quantity || 0), 0);
   const deliveredPortions = delivered.reduce((sum, d) => sum + (d.quantity || 0), 0);
   const co2Tons = (deliveredPortions * 1.1) / 1000;
-  const taxValue = delivered.reduce(
-    (sum, d) => sum + (d.quantity || 0) * (d.estimatedValue || 0),
-    0
-  );
 
   const stats = [
     { title: 'Total Donated Portions', value: totalPortions.toLocaleString(), change: `${active.length} listing${active.length === 1 ? '' : 's'}`, icon: Package },
     { title: 'Active Pickups', value: pickups.length.toLocaleString(), change: pickups.length ? 'In progress' : 'Awaiting claims', icon: Truck },
     { title: 'CO₂ Emissions Saved', value: co2Tons > 0 ? `${co2Tons.toFixed(1)} Tons` : '0 Tons', change: 'From delivered meals', icon: Leaf },
-    { title: 'Tax Deductible Value', value: taxValue > 0 ? money(taxValue) : '$0', change: 'Delivered batches only', icon: Award },
   ];
 
   const updateField = (key: keyof typeof form, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation not supported'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  };
+
+  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      const data = await res.json();
+      if (data.display_name) return data.display_name;
+      const addr = data.address || {};
+      const parts = [
+        addr.road, addr.suburb, addr.city, addr.town, addr.village,
+        addr.county, addr.state, addr.country
+      ].filter(Boolean);
+      return parts.join(', ') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    } catch {
+      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+  };
+
+  const openCamera = async () => {
+    try {
+      const loc = await getCurrentLocation();
+      setPhotoLocation(loc);
+      const address = await reverseGeocode(loc.lat, loc.lng);
+      setPhotoAddress(address);
+    } catch (e) {
+      showToast('Location access required for geotagging', 'error');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      setCameraStream(stream);
+      setShowCamera(true);
+    } catch (e) {
+      showToast('Camera access required', 'error');
+    }
+  };
+
+  const closeCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
+    setCapturedPhoto(null);
+    setPhotoLocation(null);
+    setPhotoAddress('');
+  };
+
+  const openMapPicker = async () => {
+    try {
+      const loc = await getCurrentLocation();
+      setMapCenter(loc);
+      setSelectedLocation(loc);
+    } catch {
+      setMapCenter({ lat: 28.6139, lng: 77.2090 }); // Default to New Delhi
+      setSelectedLocation({ lat: 28.6139, lng: 77.2090 });
+    }
+    setShowMapPicker(true);
+  };
+
+  const handleMapClick = (e: any) => {
+    const { lat, lng } = e.latlng;
+    setSelectedLocation({ lat, lng });
+  };
+
+  useEffect(() => {
+    if (showMapPicker && mapRef.current && mapRef.current.leafletElement) {
+      const map = mapRef.current.leafletElement;
+      map.on('click', handleMapClick);
+      return () => {
+        map.off('click', handleMapClick);
+      };
+    }
+  }, [showMapPicker, handleMapClick]);
+
+  const confirmMapLocation = async () => {
+    if (!selectedLocation) return;
+    const address = await reverseGeocode(selectedLocation.lat, selectedLocation.lng);
+    updateField('pickupLocation', address);
+    setShowMapPicker(false);
+    setSelectedLocation(null);
+    setMapCenter(null);
+  };
+
+  const closeMapPicker = () => {
+    setShowMapPicker(false);
+    setSelectedLocation(null);
+    setMapCenter(null);
+  };
+
+  const capturePhoto = () => {
+    if (!cameraStream) return;
+    const video = document.createElement('video');
+    video.srcObject = cameraStream;
+    video.play();
+    video.onloadeddata = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Add overlay: timestamp, GPS address, note
+      const now = new Date();
+      const timestamp = now.toLocaleString();
+      const gpsText = photoAddress || (photoLocation
+        ? `${photoLocation.lat.toFixed(4)}, ${photoLocation.lng.toFixed(4)}`
+        : 'Location unavailable');
+      const note = 'Person with food should be in photo';
+
+      ctx.font = 'bold 20px Arial';
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      const padding = 12;
+      const lineHeight = 28;
+      let y = canvas.height - padding - lineHeight * 3;
+
+      // Background for text
+      ctx.fillRect(0, y - 4, canvas.width, lineHeight * 3 + 8);
+      ctx.fillStyle = 'white';
+      ctx.fillText(`Captured: ${timestamp}`, padding, y);
+      y += lineHeight;
+      ctx.fillText(gpsText, padding, y);
+      y += lineHeight;
+      ctx.fillText(note, padding, y);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      setCapturedPhoto(dataUrl);
+      setForm((f) => ({ ...f, photoUrl: dataUrl }));
+      closeCamera();
+    };
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
+    setForm((f) => ({ ...f, photoUrl: '' }));
+  };
+
   const handleCreateDonation = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate required fields
+    if (!form.title.trim()) {
+      showToast('Food Item Name is required', 'error');
+      setSubmitting(false);
+      return;
+    }
+    if (!form.description.trim()) {
+      showToast('Description is required', 'error');
+      setSubmitting(false);
+      return;
+    }
+    if (!form.quantity) {
+      showToast('Quantity is required', 'error');
+      setSubmitting(false);
+      return;
+    }
+    if (!form.itemType.trim()) {
+      showToast('Item Type is required', 'error');
+      setSubmitting(false);
+      return;
+    }
+    if (!form.pickupLocation.trim()) {
+      showToast('Pickup Location is required', 'error');
+      setSubmitting(false);
+      return;
+    }
+    if (!form.expiryDateTime) {
+      showToast('Expiry Date & Time is required', 'error');
+      setSubmitting(false);
+      return;
+    }
+    if (!form.pickupWindowStart || !form.pickupWindowEnd) {
+      showToast('Pickup Window Start and End are required', 'error');
+      setSubmitting(false);
+      return;
+    }
+    if (!form.photoUrl) {
+      showToast('Food Photo with geotag is required', 'error');
+      setSubmitting(false);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await apiRequest<Donation>('/donations', {
@@ -113,14 +319,15 @@ export const DonorDashboard: React.FC = () => {
           pickupLocation: form.pickupLocation,
           pickupWindowStart: new Date(form.pickupWindowStart).toISOString(),
           pickupWindowEnd: new Date(form.pickupWindowEnd).toISOString(),
-          estimatedValue: form.estimatedValue ? parseFloat(form.estimatedValue) : null,
+          address: photoAddress || null,
         }),
       });
       showToast('Food surplus posted to the matching engine!', 'success');
       setShowModal(false);
       setForm({
         title: '', description: '', quantity: '', itemType: '', expiryDateTime: '',
-        pickupLocation: '', pickupWindowStart: '', pickupWindowEnd: '', estimatedValue: '',
+        pickupLocation: '', pickupWindowStart: '', pickupWindowEnd: '',
+        photoUrl: '',
       });
       fetchDonations();
     } catch (err: any) {
@@ -183,7 +390,7 @@ export const DonorDashboard: React.FC = () => {
                 Welcome back, {user?.name || 'Partner Kitchen'}
               </h1>
               <p className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Manage your food surplus posts, track pickups, and view tax deductions.
+                Manage your food surplus posts, track pickups, and view your impact.
               </p>
             </div>
 
@@ -408,54 +615,7 @@ export const DonorDashboard: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* ============ TAX & IMPACT ============ */}
-        {tab === 'tax' && (
-          <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-emerald-500/20 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-emerald-500" /> Tax Deductions & Impact
-              </h3>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{money(taxValue)} deductible</span>
-            </div>
-            {loading ? (
-              <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading...
-              </p>
-            ) : delivered.length === 0 ? (
-              <p className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">
-                No delivered batches yet. Completed deliveries will appear here with their estimated tax deduction and CO₂ impact.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {delivered.map((d) => {
-                  const value = (d.quantity || 0) * (d.estimatedValue || 0);
-                  return (
-                    <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-xs">
-                      <div className="min-w-0">
-                        <p className="font-bold text-gray-900 dark:text-white truncate">{d.title}</p>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                          {d.quantity} portions delivered{d.estimatedValue ? ` at ${money(d.estimatedValue)}/portion` : ''}
-                        </p>
-                      </div>
-                      <span className="font-black text-emerald-600 dark:text-emerald-400 shrink-0">
-                        {d.estimatedValue ? money(value) : '—'}
-                      </span>
-                    </div>
-                  );
-                })}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 pt-3 border-t border-emerald-500/10 text-xs font-black text-gray-900 dark:text-white">
-                  <span className="flex items-center gap-2">
-                    <Leaf className="w-4 h-4 text-emerald-500" />
-                    Estimated CO₂ saved: {co2Tons.toFixed(2)} tons
-                  </span>
-                  <span>Total deduction: {money(taxValue)}</span>
-                </div>
-              </div>
-            )}
-          </div>
+</div>
         )}
 
       </main>
@@ -473,47 +633,132 @@ export const DonorDashboard: React.FC = () => {
             <form onSubmit={handleCreateDonation} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Food Item Name *</label>
-                <input type="text" required value={form.title} onChange={(e) => updateField('title', e.target.value)} placeholder="e.g., Prepared Hot Meals (Pasta & Salad)" className="w-full px-3 py-2.5 rounded-xl glass-input" />
+                <input type="text" required value={form.title} onChange={(e) => updateField('title', e.target.value)} placeholder="" className="w-full px-3 py-2.5 rounded-xl glass-input" />
               </div>
               <div>
-                <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Description</label>
-                <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={2} placeholder="e.g., Freshly cooked banquet leftovers, sealed and refrigerated" className="w-full px-3 py-2.5 rounded-xl glass-input resize-none" />
+                <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Description *</label>
+                <textarea required value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={2} placeholder="" className="w-full px-3 py-2.5 rounded-xl glass-input resize-none" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Quantity (Portions) *</label>
-                  <input type="number" min={1} required value={form.quantity} onChange={(e) => updateField('quantity', e.target.value)} placeholder="120" className="w-full px-3 py-2.5 rounded-xl glass-input" />
+                  <input type="number" min={1} required value={form.quantity} onChange={(e) => updateField('quantity', e.target.value)} placeholder="" className="w-full px-3 py-2.5 rounded-xl glass-input" />
                 </div>
                 <div>
-                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Item Type</label>
-                  <input type="text" value={form.itemType} onChange={(e) => updateField('itemType', e.target.value)} placeholder="e.g., Cooked Meals, Bakery, Produce" className="w-full px-3 py-2.5 rounded-xl glass-input" />
+                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Item Type *</label>
+                  <input type="text" required value={form.itemType} onChange={(e) => updateField('itemType', e.target.value)} placeholder="" className="w-full px-3 py-2.5 rounded-xl glass-input" />
                 </div>
               </div>
               <div>
                 <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Pickup Location *</label>
-                <input type="text" required value={form.pickupLocation} onChange={(e) => updateField('pickupLocation', e.target.value)} placeholder="e.g., Kitchen Loading Dock, 123 Main St" className="w-full px-3 py-2.5 rounded-xl glass-input" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Expiry Date & Time</label>
-                  <input type="datetime-local" value={form.expiryDateTime} onChange={(e) => updateField('expiryDateTime', e.target.value)} className="w-full px-3 py-2.5 rounded-xl glass-input" />
-                </div>
-                <div>
-                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Estimated Value ($/portion)</label>
-                  <input type="number" min={0} step="0.01" value={form.estimatedValue} onChange={(e) => updateField('estimatedValue', e.target.value)} placeholder="5.00" className="w-full px-3 py-2.5 rounded-xl glass-input" />
-                  <p className="text-[10px] text-gray-500 mt-1">Used to calculate your tax deduction when delivered.</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Pickup Window Start *</label>
-                  <input type="datetime-local" required value={form.pickupWindowStart} onChange={(e) => updateField('pickupWindowStart', e.target.value)} className="w-full px-3 py-2.5 rounded-xl glass-input" />
-                </div>
-                <div>
-                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Pickup Window End *</label>
-                  <input type="datetime-local" required value={form.pickupWindowEnd} onChange={(e) => updateField('pickupWindowEnd', e.target.value)} className="w-full px-3 py-2.5 rounded-xl glass-input" />
+                <div className="flex gap-2">
+                  <input type="text" required value={form.pickupLocation} onChange={(e) => updateField('pickupLocation', e.target.value)} placeholder="" className="flex-1 px-3 py-2.5 rounded-xl glass-input" />
+                  <button
+                    type="button"
+                    onClick={openMapPicker}
+                    className="px-3 py-2.5 rounded-xl glass-card border border-brand-500/20 text-brand-600 dark:text-brand-400 hover:bg-brand-500/10 transition-colors flex items-center justify-center gap-1.5"
+                    title="Select from Map"
+                  >
+                    <MapPinIcon className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Expiry Date & Time *</label>
+                  <input type="datetime-local" required value={form.expiryDateTime} onChange={(e) => updateField('expiryDateTime', e.target.value)} className="w-full px-3 py-2.5 rounded-xl glass-input" />
+                </div>
+              </div>
+
+              {/* Photo Capture Section */}
+              <div>
+                <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Food Photo (with geotag)</label>
+                {form.photoUrl ? (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <img src={form.photoUrl} alt="Food photo" className="w-full max-h-64 rounded-xl object-cover" />
+                      <div className="absolute bottom-2 right-2 flex gap-2">
+                        <button type="button" onClick={retakePhoto} className="px-3 py-1.5 text-xs font-bold text-white bg-rose-600 rounded-xl shadow-glow flex items-center gap-1">
+                          <RotateCcw className="w-3 h-3" />
+                          Retake
+                        </button>
+                        <button type="button" onClick={openCamera} className="px-3 py-1.5 text-xs font-bold text-white bg-brand-600 rounded-xl shadow-glow flex items-center gap-1">
+                          <Camera className="w-3 h-3" />
+                          Add Another
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Person along with food should be in photo.</p>
+                  </div>
+                ) : (
+                  <button type="button" onClick={openCamera} className="w-full py-3 px-4 rounded-xl glass-card border border-gray-300 dark:border-gray-700 hover:border-brand-500 text-xs font-black text-gray-900 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm">
+                    <Camera className="w-5 h-5 text-brand-600" />
+                    <span>Capture Photo with Camera (timestamp, GPS location, verification note)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Camera Capture Modal (inline in form) */}
+              {showCamera && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-md">
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="w-full max-w-md p-4 sm:p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Camera className="w-5 h-5 text-brand-600" />
+                        Capture Food Photo
+                      </h3>
+                      <button onClick={closeCamera} className="p-1.5 rounded-lg glass-card">
+                        <XIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
+                      {cameraStream && (
+                        <video
+                          ref={(el) => {
+                            if (el && cameraStream) {
+                              el.srcObject = cameraStream;
+                              el.play();
+                            }
+                          }}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          playsInline
+                        />
+                      )}
+                      <div className="absolute inset-0 flex flex-col items-center justify-between p-4 text-white pointer-events-none">
+                        <div className="text-center text-xs bg-black/50 px-3 py-1 rounded-full">
+                          Point camera at the food. Ensure good lighting.
+                        </div>
+                        <div className="text-center text-[10px] bg-black/50 px-3 py-1 rounded-full max-w-[90%] truncate">
+                          {photoAddress ? `📍 ${photoAddress}` : (photoLocation ? `📍 ${photoLocation.lat.toFixed(4)}, ${photoLocation.lng.toFixed(4)}` : 'Getting location...')}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex gap-3">
+                      <button
+                        onClick={closeCamera}
+                        className="flex-1 py-3 rounded-xl glass-card font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={capturePhoto}
+                        disabled={!cameraStream}
+                        className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold shadow-glow disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-4 h-4" />
+                        Capture & Add Geotag
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
               <div className="flex gap-2 pt-3">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 rounded-xl glass-card font-bold">Cancel</button>
                 <button type="submit" disabled={submitting} className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold shadow-glow disabled:opacity-50">
@@ -524,6 +769,193 @@ export const DonorDashboard: React.FC = () => {
           </motion.div>
         </div>
       )}
-    </div>
+
+      {/* Camera Capture Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-md">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md p-4 sm:p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Camera className="w-5 h-5 text-brand-600" />
+                Capture Food Photo
+              </h3>
+              <button onClick={closeCamera} className="p-1.5 rounded-lg glass-card">
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
+              {cameraStream && (
+                <video
+                  ref={(el) => {
+                    if (el && cameraStream) {
+                      el.srcObject = cameraStream;
+                      el.play();
+                    }
+                  }}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  playsInline
+                />
+              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-between p-4 text-white pointer-events-none">
+                <div className="text-center text-xs bg-black/50 px-3 py-1 rounded-full">
+                  Point camera at the food. Ensure good lighting.
+                </div>
+                <div className="text-center text-[10px] bg-black/50 px-3 py-1 rounded-full">
+                  {photoLocation && `📍 ${photoLocation.lat.toFixed(4)}, ${photoLocation.lng.toFixed(4)}`}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={closeCamera}
+                className="flex-1 py-3 rounded-xl glass-card font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={capturePhoto}
+                disabled={!cameraStream}
+                className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold shadow-glow disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Camera className="w-4 h-4" />
+                Capture & Add Geotag
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Camera Capture Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-md">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md p-4 sm:p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Camera className="w-5 h-5 text-brand-600" />
+                Capture Food Photo
+              </h3>
+              <button onClick={closeCamera} className="p-1.5 rounded-lg glass-card">
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
+              {cameraStream && (
+                <video
+                  ref={(el) => {
+                    if (el && cameraStream) {
+                      el.srcObject = cameraStream;
+                      el.play();
+                    }
+                  }}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  playsInline
+                />
+              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-between p-4 text-white pointer-events-none">
+                <div className="text-center text-xs bg-black/50 px-3 py-1 rounded-full">
+                  Point camera at the food. Ensure good lighting.
+                </div>
+                <div className="text-center text-[10px] bg-black/50 px-3 py-1 rounded-full">
+                  {photoLocation && `📍 ${photoLocation.lat.toFixed(4)}, ${photoLocation.lng.toFixed(4)}`}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={closeCamera}
+                className="flex-1 py-3 rounded-xl glass-card font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={capturePhoto}
+                disabled={!cameraStream}
+                className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold shadow-glow disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Camera className="w-4 h-4" />
+                Capture & Add Geotag
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      {showMapPicker && mapCenter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-md">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-xl p-4 sm:p-6 rounded-3xl glass-card border border-brand-500/30 shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <MapPinIcon className="w-5 h-5 text-brand-600" />
+                Select Pickup Location
+              </h3>
+              <button onClick={closeMapPicker} className="p-1.5 rounded-lg glass-card">
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900">
+              <MapContainer
+                ref={mapRef}
+                center={mapCenter}
+                zoom={15}
+                scrollWheelZoom={true}
+                style={{ width: '100%', height: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {selectedLocation && (
+                  <Marker position={selectedLocation}>
+                    <div className="w-8 h-8 bg-brand-600 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                      <MapPinIcon className="w-4 h-4 text-white" />
+                    </div>
+                  </Marker>
+                )}
+              </MapContainer>
+              {selectedLocation && (
+                <div className="absolute bottom-4 left-4 right-4 bg-black/80 text-white px-4 py-2 rounded-lg text-center text-sm">
+                  Drag map to adjust pin position
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={closeMapPicker}
+                className="flex-1 py-3 rounded-xl glass-card font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmMapLocation}
+                disabled={!selectedLocation}
+                className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold shadow-glow disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Use This Location
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+  </div>
   );
 };

@@ -3,11 +3,11 @@ from typing import Optional, Union, Any
 import jwt
 import bcrypt
 from app.core.config import settings
+from app.schemas.user import UserRole
 
 # Lazily-created JWKS clients
 _kinde_jwks_client: Optional[jwt.PyJWKClient] = None
 _clerk_jwks_client: Optional[jwt.PyJWKClient] = None
-_supabase_jwks_client: Optional[jwt.PyJWKClient] = None
 _supabase_jwks_client: Optional[jwt.PyJWKClient] = None
 
 KINDE_ROLE_ORDER = ["admin", "donor", "ngo", "volunteer"]
@@ -150,6 +150,28 @@ def verify_supabase_token(token: str) -> Optional[dict]:
             )
         except jwt.PyJWTError:
             return None
+
+
+ADMIN_ACCESS_DENIED_MESSAGE = (
+    "Admin access requires approval from the platform owner. "
+    "Request access from your dashboard, then sign in again once approved."
+)
+
+
+def resolve_requested_role(email: Optional[str], requested_role: str, stored_role: Optional[str] = None) -> Optional[str]:
+    """Return the effective role for a login/registration attempt.
+
+    Only users in ADMIN_EMAILS (or previously approved as admin) may use the
+    admin role; everyone else is rejected (returns None) when they request it.
+    """
+    if requested_role != UserRole.ADMIN.value:
+        return requested_role
+    admin_set = {e.strip().lower() for e in settings.ADMIN_EMAILS.split(",") if e.strip()}
+    if email and email.strip().lower() in admin_set:
+        return UserRole.ADMIN.value
+    if stored_role == UserRole.ADMIN.value:
+        return UserRole.ADMIN.value
+    return None
 
 
 def derive_role_from_kinde_payload(payload: dict) -> str:

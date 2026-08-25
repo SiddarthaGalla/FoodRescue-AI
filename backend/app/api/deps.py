@@ -61,7 +61,7 @@ MOCK_USERS_DB = {
         "email": "admin@foodrescue.org",
         "phone": "+15550100004",
         "password": get_password_hash("AdminPass123!"),
-        "role": "admin",
+        "role": "donor",
         "profileImage": "https://api.dicebear.com/7.x/avataaars/svg?seed=admin",
         "isVerified": True,
         "createdAt": datetime.utcnow(),
@@ -77,7 +77,6 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
     # Clerk OAuth path (enabled when CLERK_DOMAIN is set)
     if getattr(settings, 'CLERK_DOMAIN', None):
         clerk_payload = verify_clerk_token(token)
@@ -151,6 +150,15 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
         status_code=status.HTTP_404_NOT_FOUND,
         detail="User not found",
     )
+
+
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)):
+    if not token:
+        return None
+    try:
+        return await get_current_user(token)
+    except HTTPException:
+        return None
 
 def require_roles(allowed_roles: List[UserRole]):
     async def role_checker(current_user: dict = Depends(get_current_user)):

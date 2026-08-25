@@ -1,6 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
+from math import radians, cos, sin, sqrt, atan2
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -9,10 +10,81 @@ from app.models.user import user_helper
 from app.models.donation import donation_helper
 from app.schemas.donation import (
     DonationCreate, DonationUpdate, DonationResponse,
-    DonationStatus, AssignVolunteerRequest
+    DonationStatus, AssignVolunteerRequest, VolunteerCreateRequest
 )
 from app.schemas.user import UserRole
 from app.api.deps import get_current_user, require_roles
+
+
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance in km between two lat/lng points."""
+    R = 6371  # Earth radius in km
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    return R * c
+
+
+def calculate_fare(donation: dict, volunteer_lat: float, volunteer_lng: float) -> tuple[float, dict]:
+    """
+    Calculate fare for volunteer pickup.
+    Returns (total_fare, breakdown_dict)
+    """
+    # Fare constants
+    BASE_FARE = 50.0
+    PER_KM_RATE = 15.0
+    PER_PORTION_RATE = 2.0
+    PLATFORM_FEE = 0.10
+    
+    # Distance fare
+    donor_lat = donation.get("latitude", 28.6139)  # Default to Delhi if not set
+    donor_lng = donation.get("longitude", 77.2090)
+    distance_km = haversine(volunteer_lat, volunteer_lng, donor_lat, donor_lng)
+    
+    distance_fare = distance_km * PER_KM_RATE
+    quantity_fare = donation.get("quantity", 0) * PER_PORTION_RATE
+    base_fare = BASE_FARE
+    
+    subtotal = base_fare + distance_fare + quantity_fare
+    
+    # Time multiplier (peak hours)
+    now = datetime.utcnow()
+    hour = (now.hour + 5) % 24  # UTC to IST roughly
+    time_multiplier = 1.2 if (11 <= hour <= 14 or 18 <= hour <= 21) else 1.0
+    
+    # Urgency multiplier (expiry < 2 hours)
+    urgency_multiplier = 1.0
+    if donation.get("expiryDateTime"):
+        expiry = donation["expiryDateTime"]
+        if isinstance(expiry, str):
+            expiry = datetime.fromisoformat(expiry.replace('Z', '+00:00'))
+        time_to_expiry = (expiry - datetime.utcnow()).total_seconds() / 3600
+        if time_to_expiry < 2:
+            urgency_multiplier = 1.3
+    
+    PLATFORM_FEE_RATE = 0.10
+    total_before_fee = (BASE_FARE + distance_fare + quantity_fare) * time_multiplier * urgency_multiplier
+    platform_fee = total_before_fee * 0.10
+    total_fare = total_before_fee - platform_fee
+    
+    breakdown = {
+        "base_fare": round(BASE_FARE, 2),
+        "distance_km": round(distance_km, 2),
+        "distance_fare": round(distance_fare, 2),
+        "quantity": donation.get("quantity", 0),
+        "per_portion_rate": PER_PORTION_RATE,
+        "quantity_fare": round(quantity_fare, 2),
+        "time_multiplier": time_multiplier,
+        "urgency_multiplier": urgency_multiplier,
+        "subtotal_before_fee": round(total_before_fee, 2),
+        "platform_fee_percent": int(PLATFORM_FEE_RATE * 100),
+        "platform_fee": round(platform_fee, 2),
+        "total_fare": round(total_fare, 2)
+    }
+    
+    return round(total_fare, 2), breakdown
+
 
 router = APIRouter()
 
@@ -254,6 +326,81 @@ async def claim_donation(
     updated = await _get_donation_or_404(donation_id)
     return donation_helper(updated)
 
+
+@router.post("/{donation_id}/assign-volunteer", response_model=DonationResponse)
+async def create_and_assign_volunteer(
+    donation_id: str,
+    req: VolunteerCreateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Create a new volunteer with photo/location and assign them to a donation in one step."""
+    donation = await _get_donation_or_404(donation_id)
+    role = current_user.get("role")
+    is_claimant = str(donation.get("claimedBy")) == current_user["id"]
+    if role != UserRole.ADMIN.value and not is_claimant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the claiming NGO or an admin can assign volunteers",
+        )
+    if donation.get("status") != DonationStatus.CLAIMED.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only claimed donations can get a volunteer assigned (current: {donation.get('status')})",
+        )
+
+    # Create new volunteer user
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    # Generate a temporary password for the volunteer
+    import secrets
+    temp_password = secrets.token_urlsafe(12)
+    
+    new_volunteer = {
+        "name": req.name,
+        "email": req.email,
+        "phone": req.phone,
+        "password": pwd_context.hash(temp_password),
+        "role": UserRole.VOLUNTEER.value,
+        "profileImage": req.photoUrl,
+        "address": req.address,
+        "latitude": req.latitude,
+        "longitude": req.longitude,
+        "isVerified": True,
+        "createdAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+    }
+    
+    db = get_database()
+    volunteer_id = None
+    if db is not None:
+        try:
+            res = await db.users.insert_one(new_volunteer)
+            volunteer_id = str(res.inserted_id)
+        except Exception:
+            pass
+    if not volunteer_id:
+        new_volunteer["id"] = str(uuid.uuid4())
+        volunteer_id = new_volunteer["id"]
+        from app.api.deps import MOCK_USERS_DB
+        MOCK_USERS_DB[volunteer_id] = new_volunteer
+    
+    # Calculate fare
+    fare, fare_breakdown = calculate_fare(donation, req.latitude, req.longitude)
+    
+    # Assign volunteer to donation
+    patch = {
+        "assignedVolunteerId": volunteer_id,
+        "assignedVolunteerName": req.name,
+        "fare": fare,
+        "fareBreakdown": fare_breakdown,
+        "updatedAt": datetime.utcnow(),
+    }
+    _patch_donation(donation_id, patch)
+    updated = await _get_donation_or_404(donation_id)
+    return donation_helper(updated)
+
+
 @router.post("/{donation_id}/assign", response_model=DonationResponse)
 async def assign_volunteer(
     donation_id: str,
@@ -279,9 +426,16 @@ async def assign_volunteer(
     if volunteer.get("role") != UserRole.VOLUNTEER.value and role != UserRole.ADMIN.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assigned user is not a volunteer")
 
+    # Calculate fare using volunteer's location
+    volunteer_lat = volunteer.get("latitude", 28.6139)
+    volunteer_lng = volunteer.get("longitude", 77.2090)
+    fare, fare_breakdown = calculate_fare(donation, volunteer_lat, volunteer_lng)
+
     patch = {
         "assignedVolunteerId": req.volunteerId,
         "assignedVolunteerName": volunteer.get("name"),
+        "fare": fare,
+        "fareBreakdown": fare_breakdown,
         "updatedAt": datetime.utcnow(),
     }
     _patch_donation(donation_id, patch)

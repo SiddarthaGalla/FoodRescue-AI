@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyRound, CheckCircle2, Sparkles, Fingerprint } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Phone, Leaf, Building2, Truck, Shield, KeyRound, CheckCircle2, Sparkles, Fingerprint, ShieldAlert, UserCog, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { UserRole } from '../types/auth';
-import { supabaseEnabled } from '../lib/supabase';
+import { supabase, supabaseEnabled } from '../lib/supabase';
+import { COUNTRY_CODES, buildPhoneTarget } from '../lib/countryCodes';
+import { apiRequest } from '../services/api';
 import { slideUp, buttonPress } from '../animations/variants';
 
 declare global {
@@ -30,16 +32,46 @@ export const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('donor');
+  const [searchParams] = useSearchParams();
+  const roleParam = searchParams.get('role');
+  const [role, setRole] = useState<UserRole>(
+    roleParam === 'admin' || roleParam === 'ngo' || roleParam === 'volunteer' || roleParam === 'donor'
+      ? roleParam
+      : 'donor'
+  );
 
   const [otpTarget, setOtpTarget] = useState('');
+  const [otpCountry, setOtpCountry] = useState('+91');
+  const [otpPhone, setOtpPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [liveOTP, setLiveOTP] = useState('');
   const [isSendingOTP, setIsSendingOTP] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [adminAccessDenied, setAdminAccessDenied] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [requestingAccess, setRequestingAccess] = useState(false);
+  const [googleAccountEmail, setGoogleAccountEmail] = useState('');
   const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  const isAdminAccessDenied = (err: any) =>
+    typeof err?.message === 'string' && err.message.includes('approval from the platform owner');
+
+  const requestAdminAccess = async () => {
+    setRequestingAccess(true);
+    try {
+      await apiRequest<{ id: string }>('/admin/request', {
+        method: 'POST',
+        body: JSON.stringify({ email: googleAccountEmail || email || otpTarget || undefined, note: null }),
+      });
+      setRequestSent(true);
+      showToast('Access request sent to the platform owner!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to send access request', 'error');
+    } finally {
+      setRequestingAccess(false);
+    }
+  };
 
   const rolesList: { id: UserRole; title: string; desc: string; icon: any }[] = [
     { id: 'donor', title: 'Food Donor', desc: 'Restaurants & Catering', icon: Building2 },
@@ -86,16 +118,39 @@ export const Register: React.FC = () => {
   const handleGoogleCredentialResponse = async (response: any) => {
     setIsSubmitting(true);
     try {
-      const assignedRole = await loginWithGoogle(
-        "device.user@gmail.com",
-        "Google Device User",
-        role,
-        "https://api.dicebear.com/7.x/avataaars/svg?seed=googledevice"
-      );
+      if (!response?.credential) {
+        showToast('Google sign-in did not return an account. Please try again.', 'error');
+        return;
+      }
+      let email = '';
+      let name = 'Google User';
+      let picture = '';
+      try {
+        const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        email = payload.email || '';
+        name = payload.name || (payload.given_name ? `${payload.given_name} ${payload.family_name || ''}`.trim() : name);
+        picture = payload.picture || picture;
+      } catch (e) {
+        console.warn('Failed to decode Google credential', e);
+      }
+      if (!email) {
+        showToast('Google sign-in did not return an account. Please try again.', 'error');
+        return;
+      }
+      setGoogleAccountEmail(email);
+      if (supabaseEnabled) {
+        await handleSupabaseGoogle();
+        return;
+      }
+      const assignedRole = await loginWithGoogle(email, name, role, picture);
       showToast(`Google Device Registration successful! Welcome`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
-      showToast(err.message || 'Google Auth failed', 'error');
+      if (isAdminAccessDenied(err)) {
+        setAdminAccessDenied(true);
+      } else {
+        showToast(err.message || 'Google Auth failed', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -108,7 +163,15 @@ export const Register: React.FC = () => {
       showToast(`Google Registration successful! Welcome`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
-      showToast(err.message || 'Google Auth failed', 'error');
+      if (isAdminAccessDenied(err)) {
+        try {
+          const { data } = await supabase!.auth.getSession();
+          if (data.session?.user?.email) setGoogleAccountEmail(data.session.user.email);
+        } catch (e) { /* ignore */ }
+        setAdminAccessDenied(true);
+      } else {
+        showToast(err.message || 'Google Auth failed', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -150,7 +213,11 @@ export const Register: React.FC = () => {
       showToast(`Account created! Welcome to FoodRescue AI as ${assignedRole.toUpperCase()}`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
-      showToast(err.message || 'Registration failed', 'error');
+      if (isAdminAccessDenied(err)) {
+        setAdminAccessDenied(true);
+      } else {
+        showToast(err.message || 'Registration failed', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -167,16 +234,21 @@ export const Register: React.FC = () => {
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpTarget) {
-      showToast('Please enter your email or phone number', 'error');
+    if (!name.trim()) {
+      showToast('Please enter your name', 'error');
       return;
     }
+    if (!otpPhone.trim()) {
+      showToast('Please enter your mobile number', 'error');
+      return;
+    }
+    const target = buildPhoneTarget(otpCountry, otpPhone);
+    setOtpTarget(target);
     setIsSendingOTP(true);
     try {
-      const code = await sendOTP(otpTarget);
-      setLiveOTP(code);
+      await sendOTP(target);
       setOtpSent(true);
-      showToast(`Real-time OTP sent to ${otpTarget}! Live Code: ${code}`, 'success');
+      showToast(`Real-time OTP sent to ${target}! Check your mobile for the code.`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to send OTP', 'error');
     } finally {
@@ -196,7 +268,11 @@ export const Register: React.FC = () => {
       showToast(`Verified via OTP! Welcome ${assignedRole.toUpperCase()}`, 'success');
       navigate(`/dashboard/${assignedRole}`);
     } catch (err: any) {
-      showToast(err.message || 'OTP verification failed', 'error');
+      if (isAdminAccessDenied(err)) {
+        setAdminAccessDenied(true);
+      } else {
+        showToast(err.message || 'OTP verification failed', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -235,7 +311,11 @@ export const Register: React.FC = () => {
                   <button
                     key={r.id}
                     type="button"
-                    onClick={() => setRole(r.id)}
+                    onClick={() => {
+                      setRole(r.id);
+                      setAdminAccessDenied(false);
+                      setRequestSent(false);
+                    }}
                     className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'border-brand-600 bg-brand-500/10 dark:bg-brand-950/60 text-brand-700 dark:text-brand-400 shadow-glow ring-1 ring-brand-500'
@@ -328,7 +408,7 @@ export const Register: React.FC = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
-                    placeholder="Green Bistro LLC"
+                    placeholder=""
                   />
                 </div>
               </div>
@@ -344,7 +424,7 @@ export const Register: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
-                      placeholder="contact@bistro.com"
+                      placeholder=""
                     />
                   </div>
                 </div>
@@ -357,7 +437,7 @@ export const Register: React.FC = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
-                      placeholder="+1 555-0199"
+                      placeholder=""
                     />
                   </div>
                 </div>
@@ -395,15 +475,43 @@ export const Register: React.FC = () => {
               {!otpSent ? (
                 <form onSubmit={handleSendOTP} className="space-y-3.5">
                   <div>
-                    <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Email or Phone</label>
-                    <input
-                      type="text"
-                      required
-                      value={otpTarget}
-                      onChange={(e) => setOtpTarget(e.target.value)}
-                      className="w-full px-3.5 py-3 rounded-xl glass-input text-xs"
-                      placeholder="user@example.com or +15550199"
-                    />
+                    <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
+                        placeholder=""
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-900 dark:text-gray-100 mb-1">Mobile Number</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={otpCountry}
+                        onChange={(e) => setOtpCountry(e.target.value)}
+                        className="w-28 px-2 py-3 rounded-xl glass-input text-xs"
+                      >
+                        {COUNTRY_CODES.map((c) => (
+                          <option key={c.value} value={c.value}>{c.value}</option>
+                        ))}
+                      </select>
+                      <div className="relative flex-1">
+                        <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
+                        <input
+                          type="tel"
+                          required
+                          value={otpPhone}
+                          onChange={(e) => setOtpPhone(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-xs"
+                          placeholder=""
+                        />
+                      </div>
+                    </div>
                   </div>
                   <motion.button
                     variants={buttonPress}
@@ -418,10 +526,10 @@ export const Register: React.FC = () => {
               ) : (
                 <form onSubmit={handleVerifyOTP} className="space-y-3.5">
                   <div className="p-3.5 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-center text-xs font-bold text-gray-900 dark:text-white space-y-1">
-                    <p>Real-time OTP dispatched to <strong>{otpTarget}</strong></p>
-                    <button type="button" onClick={() => setOtpCode(liveOTP || '123456')} className="font-black text-brand-700 dark:text-brand-400 underline block mx-auto">
-                      Auto-fill Live Code: {liveOTP || '123456'}
-                    </button>
+                    <p>Real-time OTP sent to <strong>{otpTarget}</strong></p>
+                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                      Enter the 6-digit code you received on your mobile. It expires in 5 minutes.
+                    </p>
                   </div>
                   <div>
                     <label className="block text-xs font-black mb-1 text-gray-900 dark:text-white">Enter 6-Digit Code</label>
@@ -445,6 +553,44 @@ export const Register: React.FC = () => {
                     <span>Verify & Create Account</span>
                   </motion.button>
                 </form>
+              )}
+            </div>
+          )}
+
+          {/* Admin Access Denied Panel */}
+          {adminAccessDenied && role === 'admin' && (
+            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-black text-rose-600 dark:text-rose-400">
+                    You don't have admin access
+                  </p>
+                  <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed">
+                    This account is not allowed to use the admin portal. Send an access request to the platform
+                    owner — once they approve it, you can sign in choosing the Admin role.
+                  </p>
+                </div>
+              </div>
+              {requestSent ? (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  Request sent! The platform owner will review it and you'll get access after approval.
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={requestAdminAccess}
+                  disabled={requestingAccess}
+                  className="w-full py-2.5 text-[11px] font-black uppercase rounded-xl bg-brand-600 text-white shadow-glow flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {requestingAccess ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserCog className="w-4 h-4" />
+                  )}
+                  {requestingAccess ? 'Sending...' : 'Request Admin Access'}
+                </button>
               )}
             </div>
           )}

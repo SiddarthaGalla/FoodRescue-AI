@@ -20,6 +20,7 @@ class DonationBase(BaseModel):
     pickupWindowStart: datetime
     pickupWindowEnd: datetime
     photoUrl: Optional[str] = Field(None, max_length=500)
+    address: Optional[str] = Field(None, max_length=500)
     estimatedValue: Optional[float] = Field(None, gt=0, description="Estimated USD value per portion (for tax deductions)")
 
 class DonationCreate(DonationBase):
@@ -40,6 +41,17 @@ class DonationUpdate(BaseModel):
 class AssignVolunteerRequest(BaseModel):
     volunteerId: str
 
+
+class VolunteerCreateRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    phone: str = Field(..., min_length=10, max_length=20)
+    email: EmailStr
+    photoUrl: Optional[str] = Field(None, max_length=500)
+    address: Optional[str] = Field(None, max_length=500)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
 class DonationResponse(DonationBase):
     id: str
     donorId: str
@@ -49,5 +61,7 @@ class DonationResponse(DonationBase):
     claimedByName: Optional[str] = None
     assignedVolunteerId: Optional[str] = None
     assignedVolunteerName: Optional[str] = None
+    fare: Optional[float] = None
+    fareBreakdown: Optional[dict] = None
     createdAt: datetime
     updatedAt: datetime

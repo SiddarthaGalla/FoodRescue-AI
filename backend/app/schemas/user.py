@@ -23,6 +23,7 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
     rememberMe: Optional[bool] = False
+    role: Optional[UserRole] = UserRole.DONOR
 
 class UserResponse(UserBase):
     id: str
@@ -52,10 +53,11 @@ class SendOTPRequest(BaseModel):
     target: str = Field(..., description="Email address or phone number")
 
 class VerifyOTPRequest(BaseModel):
-    target: str = Field(..., description="Email address or phone number")
+    target: str = Field(..., description="Email address or phone number (E.164 with +)")
     otp: str = Field(..., min_length=6, max_length=6)
     role: Optional[UserRole] = UserRole.DONOR
     name: Optional[str] = None
+    purpose: Optional[str] = "login"  # "login" or "reset"
 
 class GoogleAuthRequest(BaseModel):
     idToken: Optional[str] = None

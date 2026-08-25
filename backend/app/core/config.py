@@ -19,6 +19,23 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""  # e.g. "https://abcdefgh.supabase.co"
     SUPABASE_JWT_SECRET: str = ""  # Project Settings -> API -> JWT Secret
 
+    # Comma-separated list of email addresses that may use the admin role
+    ADMIN_EMAILS: str = "siddarthagalla@gmail.com"
+
+    # SMTP email notifications (empty SMTP_* = notifications logged, not sent)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "FoodRescue AI <no-reply@foodrescue.app>"
+    # Where admin access request notifications go; defaults to ADMIN_EMAILS
+    ADMIN_NOTIFY_EMAIL: str = ""
+
+    # Twilio SMS (empty TWILIO_* = OTP codes logged to console, not texted)
+    TWILIO_ACCOUNT_SID: str = ""  # Account SID from console.twilio.com
+    TWILIO_AUTH_TOKEN: str = ""   # Auth Token from console.twilio.com
+    TWILIO_FROM_NUMBER: str = ""  # E.164 sender, e.g. "+12345678901"
+
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:3000",

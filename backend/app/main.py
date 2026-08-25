@@ -1,5 +1,14 @@
 import logging
+import os
+import sys
 from contextlib import asynccontextmanager
+
+# Make the `app` package importable when this file is executed directly
+# (sys.path[0] is the script's own directory, not the backend/ root).
+_backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _backend_root not in sys.path:
+    sys.path.insert(0, _backend_root)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -48,5 +57,14 @@ async def root():
     }
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Running this file directly boots the whole app (backend + frontend +
+    # browser) via the one-click launcher at the repo root.
+    import subprocess
+
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    venv_python = os.path.join(root, "backend", ".venv", "Scripts", "python.exe")
+    if not os.path.exists(venv_python):
+        venv_python = sys.executable
+    launcher = os.path.join(root, "main.py")
+    subprocess.run([venv_python, launcher])
+    sys.exit(0)

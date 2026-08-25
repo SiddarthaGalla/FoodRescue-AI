@@ -1,20 +1,38 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 import uuid
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.user import (
     UserCreate, UserLogin, UserResponse, Token,
     ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest,
     SendOTPRequest, VerifyOTPRequest, GoogleAuthRequest, DummyLoginRequest, UserRole
 )
-from app.core.security import get_password_hash, verify_password, create_access_token, verify_supabase_token
+from app.core.config import settings
+from app.core.security import (
+    get_password_hash, verify_password, create_access_token,
+    verify_supabase_token, resolve_requested_role, ADMIN_ACCESS_DENIED_MESSAGE,
+)
 from app.db.mongodb import get_database
 from app.models.user import user_helper
 from app.api.deps import get_current_user, MOCK_USERS_DB
 from app.services.otp_service import send_realtime_otp, verify_otp_code
 from app.schemas.user import SupabaseAuthRequest
+from app.api.v1.endpoints.admin import has_approved_admin_request
 
 router = APIRouter()
+
+
+async def _guard_role(email: str, requested_role: str, stored_role: str | None = None) -> str:
+    resolved = resolve_requested_role(email, requested_role, stored_role)
+    if resolved is not None:
+        return resolved
+    if requested_role == "admin" and await has_approved_admin_request(email):
+        return "admin"
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=ADMIN_ACCESS_DENIED_MESSAGE,
+    )
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserCreate) -> Any:
@@ -41,12 +59,13 @@ async def register(user_in: UserCreate) -> Any:
             )
 
     hashed_password = get_password_hash(user_in.password)
+    role_val = await _guard_role(user_in.email, user_in.role.value)
     user_doc = {
         "name": user_in.name,
         "email": user_in.email,
         "phone": user_in.phone,
         "password": hashed_password,
-        "role": user_in.role.value,
+        "role": role_val,
         "profileImage": user_in.profileImage or f"https://api.dicebear.com/7.x/avataaars/svg?seed={user_in.email}",
         "isVerified": True,
         "createdAt": now,
@@ -67,7 +86,7 @@ async def register(user_in: UserCreate) -> Any:
         MOCK_USERS_DB[user_id] = user_doc
 
     formatted_user = user_helper(user_doc)
-    access_token = create_access_token(subject=user_id, role=user_in.role.value)
+    access_token = create_access_token(subject=user_id, role=role_val)
 
     return {
         "access_token": access_token,
@@ -98,8 +117,27 @@ async def login(credentials: UserLogin) -> Any:
             detail="Incorrect email or password",
         )
 
-    user_id = str(found_user.get("_id", found_user.get("id")))
     role = found_user.get("role", "donor")
+    requested = credentials.role.value if credentials.role else None
+    if requested and requested != role:
+        role = await _guard_role(credentials.email, requested, role)
+        if role != found_user.get("role"):
+            found_user["role"] = role
+            db = get_database()
+            if db is not None:
+                try:
+                    from bson import ObjectId
+                    db.users.update_one(
+                        {"_id": ObjectId(found_user.get("_id"))},
+                        {"$set": {"role": role, "updatedAt": datetime.utcnow()}},
+                    )
+                except Exception:
+                    pass
+            mock_key = str(found_user.get("id") or found_user.get("_id"))
+            if mock_key in MOCK_USERS_DB:
+                MOCK_USERS_DB[mock_key]["role"] = role
+
+    user_id = str(found_user.get("_id", found_user.get("id")))
     formatted_user = user_helper(found_user)
     access_token = create_access_token(subject=user_id, role=role)
 
@@ -112,14 +150,15 @@ async def login(credentials: UserLogin) -> Any:
 @router.post("/send-otp")
 async def send_otp(req: SendOTPRequest) -> Any:
     otp_code, status_msg = send_realtime_otp(req.target)
+    # The code itself is intentionally NOT returned — it only goes to the
+    # recipient's device (Twilio SMS / SMTP / server console fallback).
     return {
         "message": status_msg,
-        "otp": otp_code,
         "target": req.target,
         "expires_in_minutes": 5
     }
 
-@router.post("/verify-otp", response_model=Token)
+@router.post("/verify-otp")
 async def verify_otp(req: VerifyOTPRequest) -> Any:
     is_valid = verify_otp_code(req.target, req.otp)
     if not is_valid:
@@ -127,6 +166,32 @@ async def verify_otp(req: VerifyOTPRequest) -> Any:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired OTP verification code.",
         )
+
+    # Password-reset flow: verify the OTP, return a short-lived reset token,
+    # and never create or sign the user in.
+    if req.purpose == "reset":
+        db = get_database()
+        found_user = None
+        is_email = "@" in req.target
+        query = {"email": req.target} if is_email else {"phone": req.target}
+        if db is not None:
+            try:
+                found_user = await db.users.find_one(query)
+            except Exception:
+                pass
+        if not found_user:
+            for u in MOCK_USERS_DB.values():
+                if (is_email and u.get("email") == req.target) or (not is_email and u.get("phone") == req.target):
+                    found_user = u
+                    break
+        if not found_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No account found for this phone number.",
+            )
+        user_id = str(found_user.get("_id", found_user.get("id")))
+        reset_token = create_access_token(subject=user_id, role="reset", expires_delta=timedelta(minutes=10))
+        return {"reset_token": reset_token, "message": "OTP verified successfully"}
 
     db = get_database()
     found_user = None
@@ -148,6 +213,11 @@ async def verify_otp(req: VerifyOTPRequest) -> Any:
 
     now = datetime.utcnow()
     role_val = req.role.value if req.role else "donor"
+    role_val = await _guard_role(
+        req.target if is_email else f"{req.target}@mobile.user",
+        role_val,
+        found_user.get("role") if found_user else None,
+    )
 
     if not found_user:
         user_name = req.name or (req.target.split("@")[0] if is_email else f"User {req.target[-4:]}")
@@ -207,6 +277,7 @@ async def google_auth(req: GoogleAuthRequest) -> Any:
 
     now = datetime.utcnow()
     role_val = req.role.value if req.role else "donor"
+    role_val = await _guard_role(req.email, role_val, found_user.get("role") if found_user else None)
 
     if not found_user:
         user_doc = {
@@ -283,6 +354,7 @@ async def supabase_auth(req: SupabaseAuthRequest) -> Any:
 
     now = datetime.utcnow()
     role_val = req.role.value if req.role else (found_user.get("role") if found_user else "donor")
+    role_val = await _guard_role(email, role_val, found_user.get("role") if found_user else None)
 
     if not found_user:
         user_doc = {
@@ -377,6 +449,7 @@ async def dummy_login(req: DummyLoginRequest) -> Any:
                 break
 
     now = datetime.utcnow()
+    role_str = await _guard_role(target_email, role_str, found_user.get("role") if found_user else None)
     if not found_user:
         user_name = req.name or f"Demo {role_str.upper()} User"
         user_doc = {
@@ -430,6 +503,51 @@ async def forgot_password(req: ForgotPasswordRequest) -> Any:
 
 @router.post("/reset-password")
 async def reset_password(req: ResetPasswordRequest) -> Any:
+    # req.token is a short-lived JWT minted by /auth/verify-otp (purpose=reset).
+    try:
+        payload = jwt.decode(
+            req.token,
+            key=settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        user_id = payload.get("sub")
+        role = payload.get("role")
+        if not user_id or role != "reset":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token.",
+            )
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token.",
+        )
+
+    db = get_database()
+    found_user = None
+    if db is not None:
+        try:
+            from bson import ObjectId
+            found_user = await db.users.find_one({"_id": ObjectId(user_id)})
+        except Exception:
+            pass
+    if not found_user:
+        found_user = MOCK_USERS_DB.get(user_id)
+    if not found_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found.",
+        )
+
+    new_hashed = get_password_hash(req.new_password)
+    if db is not None:
+        try:
+            from bson import ObjectId
+            await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"password": new_hashed, "updatedAt": datetime.utcnow()}})
+        except Exception:
+            pass
+    if user_id in MOCK_USERS_DB:
+        MOCK_USERS_DB[user_id]["password"] = new_hashed
     return {"message": "Password has been reset successfully"}
 
 @router.post("/verify-email")
