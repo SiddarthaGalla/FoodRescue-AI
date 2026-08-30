@@ -188,80 +188,15 @@ export const DonorDashboard: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<any>(null);
 
-const DUMMY_DONATIONS: Donation[] = [
-  {
-    id: 'DON-9481',
-    title: 'Gourmet Banquet Catering Surplus',
-    description: 'Prepared organic hot meals from evening hotel conference. Insulated and temperature-controlled.',
-    quantity: 140,
-    itemType: 'Prepared Meals',
-    status: 'available',
-    pickupLocation: 'Building #4, Mindspace Tech Park, Hitec City, Hyderabad (Geo: 17.4401° N, 78.3489° E)',
-    latitude: 17.4401,
-    longitude: 78.3489,
-    pickupWindowStart: new Date(Date.now() + 15 * 60000).toISOString(),
-    pickupWindowEnd: new Date(Date.now() + 180 * 60000).toISOString(),
-    expiryDateTime: new Date(Date.now() + 240 * 60000).toISOString(),
-    donorName: 'Grand Horizon Hotel',
-    donorPhone: '+91 98765 43210',
-    temperature: '68°C (Safe Hot Hold)',
-    foodSafetyPassed: true,
-    photoUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'DON-9480',
-    title: 'Fresh Artisan Bakery Pastries & Breads',
-    description: 'Assorted whole grain loaves, croissants, and breakfast pastries packed in food-grade cartons.',
-    quantity: 80,
-    itemType: 'Bakery Items',
-    status: 'claimed',
-    pickupLocation: 'Artisan Bakery Hub, Jubilee Hills Rd #36, Hyderabad (Geo: 17.4325° N, 78.4071° E)',
-    latitude: 17.4325,
-    longitude: 78.4071,
-    pickupWindowStart: new Date(Date.now() - 30 * 60000).toISOString(),
-    pickupWindowEnd: new Date(Date.now() + 120 * 60000).toISOString(),
-    expiryDateTime: new Date(Date.now() + 360 * 60000).toISOString(),
-    donorName: 'Artisan Bakehouse',
-    donorPhone: '+91 98123 45678',
-    temperature: '22°C (Ambient Room Temp)',
-    foodSafetyPassed: true,
-    claimedByNgoName: 'Hope Community Shelter',
-    volunteerName: 'Driver Fleet #402 (Rahul V.)',
-    photoUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80',
-    createdAt: new Date(Date.now() - 60 * 60000).toISOString(),
-  },
-  {
-    id: 'DON-9479',
-    title: 'Organic Garden Salad Bar & Fresh Fruits',
-    description: 'Crisp green salads, chopped vegetables, and fresh fruit bowls stored in chilled containers.',
-    quantity: 65,
-    itemType: 'Fresh Produce',
-    status: 'delivered',
-    pickupLocation: 'Green Bistro Kitchen, Gachibowli Financial District, Hyderabad (Geo: 17.4126° N, 78.3264° E)',
-    latitude: 17.4126,
-    longitude: 78.3264,
-    pickupWindowStart: new Date(Date.now() - 180 * 60000).toISOString(),
-    pickupWindowEnd: new Date(Date.now() - 120 * 60000).toISOString(),
-    expiryDateTime: new Date(Date.now() + 120 * 60000).toISOString(),
-    donorName: 'Green Bistro',
-    donorPhone: '+91 97654 32109',
-    temperature: '4°C (Cold Storage)',
-    foodSafetyPassed: true,
-    claimedByNgoName: 'Youth Hunger Relief Foundation',
-    volunteerName: 'Driver Fleet #118 (Sneha P.)',
-    photoUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=80',
-    createdAt: new Date(Date.now() - 240 * 60000).toISOString(),
-  }
-];
+const DUMMY_DONATIONS: Donation[] = [];
 
   const fetchDonations = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiRequest<Donation[]>('/donations');
-      setDonations(data && data.length > 0 ? data : DUMMY_DONATIONS);
+      setDonations(data || []);
     } catch (err: any) {
-      setDonations(DUMMY_DONATIONS);
+      setDonations([]);
     } finally {
       setLoading(false);
     }
