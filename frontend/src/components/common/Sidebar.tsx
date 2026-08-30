@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, Package, Truck, Building2, 
-  Settings, Award, Heart, ShieldCheck, LifeBuoy, X, Send, Loader2, UserCog
+  Settings, Award, Heart, ShieldCheck, LifeBuoy, X, Send, Loader2, UserCog, BarChart3
 } from 'lucide-react';
 import { UserRole } from '../../types/auth';
 import { useToast } from '../../contexts/ToastContext';
@@ -61,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
     ],
     admin: [
       { name: 'Admin Console', path: '/dashboard/admin', icon: LayoutDashboard },
+      { name: 'Food Analytics', path: '/dashboard/admin/analytics', icon: BarChart3 },
       { name: 'Donors & NGOs', path: '/dashboard/admin/orgs', icon: Building2 },
       { name: 'Support Requests', path: '/dashboard/admin/support', icon: LifeBuoy },
       { name: 'Admin Access', path: '/dashboard/admin/requests', icon: UserCog },

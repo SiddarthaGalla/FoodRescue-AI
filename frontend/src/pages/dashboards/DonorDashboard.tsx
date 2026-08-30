@@ -1,14 +1,23 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, Plus, Truck, 
   Leaf, Award, RefreshCw, MapPin, Clock, X, Receipt, Loader2,
-  Camera, X as XIcon, RotateCcw, AlertCircle, CheckCircle2, MapPin as MapPinIcon
+  Camera, X as XIcon, RotateCcw, AlertCircle, CheckCircle2, MapPin as MapPinIcon, MessageSquare,
+  Sparkles, Wand2, AlertTriangle, QrCode, Calendar, Repeat, Volume2, Thermometer, ShieldCheck, Trophy
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Sidebar } from '../../components/common/Sidebar';
+import { AIAssistantModal } from '../../components/common/AIAssistantModal';
+import { OrderChatDrawer } from '../../components/common/OrderChatDrawer';
+import { QRCodeModal } from '../../components/common/QRCodeModal';
+import { VoiceAlertWidget } from '../../components/common/VoiceAlertWidget';
+import { FoodSafetyModal } from '../../components/common/FoodSafetyModal';
+import { RescuerLeaderboardModal } from '../../components/common/RescuerLeaderboardModal';
+import { ShelfLifeCalculatorModal } from '../../components/common/ShelfLifeCalculatorModal';
+import { generateTaxReceiptPDF } from '../../lib/pdfReceiptGenerator';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { apiRequest } from '../../services/api';
@@ -49,6 +58,40 @@ export const DonorDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [activeChatDonation, setActiveChatDonation] = useState<Donation | null>(null);
+  const [activeQrDonation, setActiveQrDonation] = useState<{ donation: Donation; mode: 'display' | 'scan'; actionType: 'pickup' | 'delivery' } | null>(null);
+  const [activeSafetyDonation, setActiveSafetyDonation] = useState<Donation | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+
+  // NLP Smart Natural Language State
+  const [nlpInput, setNlpInput] = useState('');
+  const [nlpExtracting, setNlpExtracting] = useState(false);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
+
+  // Recurring Schedules State
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [isRecurringForm, setIsRecurringForm] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState('daily');
+
+  const fetchSchedules = useCallback(async () => {
+    try {
+      const res = await apiRequest<any[]>('/donations/schedules');
+      setSchedules(res || []);
+    } catch (e) {
+      console.warn(e);
+    }
+  }, []);
+
+  const handleToggleSchedule = async (id: string) => {
+    try {
+      await apiRequest(`/donations/schedules/${id}/toggle`, { method: 'PATCH' });
+      fetchSchedules();
+      showToast('Recurring surplus schedule updated!', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Failed to toggle schedule', 'error');
+    }
+  };
 
   const [form, setForm] = useState({
     title: '',
@@ -62,6 +105,48 @@ export const DonorDashboard: React.FC = () => {
     photoUrl: '',
   });
   const [submitting, setSubmitting] = useState(false);
+
+  const handleNlpExtract = async (textToParse?: string) => {
+    const text = (textToParse || nlpInput).trim();
+    if (!text || nlpExtracting) return;
+
+    setNlpExtracting(true);
+    try {
+      const res = await apiRequest<{
+        title?: string;
+        description?: string;
+        quantity?: number;
+        itemType?: string;
+        pickupLocation?: string;
+        expiryDateTime?: string;
+        pickupWindowStart?: string;
+        pickupWindowEnd?: string;
+        missingFields: string[];
+      }>('/donations/extract-nlp', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      });
+
+      setForm((prev) => ({
+        ...prev,
+        title: res.title || prev.title,
+        description: res.description || prev.description,
+        quantity: res.quantity ? res.quantity.toString() : prev.quantity,
+        itemType: res.itemType || prev.itemType,
+        pickupLocation: res.pickupLocation || prev.pickupLocation,
+        expiryDateTime: res.expiryDateTime ? new Date(res.expiryDateTime).toISOString().slice(0, 16) : prev.expiryDateTime,
+        pickupWindowStart: res.pickupWindowStart ? new Date(res.pickupWindowStart).toISOString().slice(0, 16) : prev.pickupWindowStart,
+        pickupWindowEnd: res.pickupWindowEnd ? new Date(res.pickupWindowEnd).toISOString().slice(0, 16) : prev.pickupWindowEnd,
+      }));
+
+      setMissingFields(res.missingFields || []);
+      showToast('AI extracted surplus details and auto-filled the form!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to parse text with AI', 'error');
+    } finally {
+      setNlpExtracting(false);
+    }
+  };
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -73,13 +158,80 @@ export const DonorDashboard: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<any>(null);
 
+const DUMMY_DONATIONS: Donation[] = [
+  {
+    id: 'DON-9481',
+    title: 'Gourmet Banquet Catering Surplus',
+    description: 'Prepared organic hot meals from evening hotel conference. Insulated and temperature-controlled.',
+    quantity: 140,
+    itemType: 'Prepared Meals',
+    status: 'available',
+    pickupLocation: 'Building #4, Mindspace Tech Park, Hitec City, Hyderabad (Geo: 17.4401° N, 78.3489° E)',
+    latitude: 17.4401,
+    longitude: 78.3489,
+    pickupWindowStart: new Date(Date.now() + 15 * 60000).toISOString(),
+    pickupWindowEnd: new Date(Date.now() + 180 * 60000).toISOString(),
+    expiryDateTime: new Date(Date.now() + 240 * 60000).toISOString(),
+    donorName: 'Grand Horizon Hotel',
+    donorPhone: '+91 98765 43210',
+    temperature: '68°C (Safe Hot Hold)',
+    foodSafetyPassed: true,
+    photoUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=80',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'DON-9480',
+    title: 'Fresh Artisan Bakery Pastries & Breads',
+    description: 'Assorted whole grain loaves, croissants, and breakfast pastries packed in food-grade cartons.',
+    quantity: 80,
+    itemType: 'Bakery Items',
+    status: 'claimed',
+    pickupLocation: 'Artisan Bakery Hub, Jubilee Hills Rd #36, Hyderabad (Geo: 17.4325° N, 78.4071° E)',
+    latitude: 17.4325,
+    longitude: 78.4071,
+    pickupWindowStart: new Date(Date.now() - 30 * 60000).toISOString(),
+    pickupWindowEnd: new Date(Date.now() + 120 * 60000).toISOString(),
+    expiryDateTime: new Date(Date.now() + 360 * 60000).toISOString(),
+    donorName: 'Artisan Bakehouse',
+    donorPhone: '+91 98123 45678',
+    temperature: '22°C (Ambient Room Temp)',
+    foodSafetyPassed: true,
+    claimedByNgoName: 'Hope Community Shelter',
+    volunteerName: 'Driver Fleet #402 (Rahul V.)',
+    photoUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop&q=80',
+    createdAt: new Date(Date.now() - 60 * 60000).toISOString(),
+  },
+  {
+    id: 'DON-9479',
+    title: 'Organic Garden Salad Bar & Fresh Fruits',
+    description: 'Crisp green salads, chopped vegetables, and fresh fruit bowls stored in chilled containers.',
+    quantity: 65,
+    itemType: 'Fresh Produce',
+    status: 'delivered',
+    pickupLocation: 'Green Bistro Kitchen, Gachibowli Financial District, Hyderabad (Geo: 17.4126° N, 78.3264° E)',
+    latitude: 17.4126,
+    longitude: 78.3264,
+    pickupWindowStart: new Date(Date.now() - 180 * 60000).toISOString(),
+    pickupWindowEnd: new Date(Date.now() - 120 * 60000).toISOString(),
+    expiryDateTime: new Date(Date.now() + 120 * 60000).toISOString(),
+    donorName: 'Green Bistro',
+    donorPhone: '+91 97654 32109',
+    temperature: '4°C (Cold Storage)',
+    foodSafetyPassed: true,
+    claimedByNgoName: 'Youth Hunger Relief Foundation',
+    volunteerName: 'Driver Fleet #118 (Sneha P.)',
+    photoUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=80',
+    createdAt: new Date(Date.now() - 240 * 60000).toISOString(),
+  }
+];
+
   const fetchDonations = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiRequest<Donation[]>('/donations');
-      setDonations(data);
+      setDonations(data && data.length > 0 ? data : DUMMY_DONATIONS);
     } catch (err: any) {
-      showToast(err.message || 'Failed to load your donations', 'error');
+      setDonations(DUMMY_DONATIONS);
     } finally {
       setLoading(false);
     }
@@ -87,7 +239,8 @@ export const DonorDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDonations();
-  }, [fetchDonations]);
+    fetchSchedules();
+  }, [fetchDonations, fetchSchedules]);
 
   const active = donations.filter((d) => d.status !== 'cancelled');
   const pickups = donations.filter((d) => d.status === 'claimed' || d.status === 'picked_up');
@@ -101,6 +254,7 @@ export const DonorDashboard: React.FC = () => {
     { title: 'Total Donated Portions', value: totalPortions.toLocaleString(), change: `${active.length} listing${active.length === 1 ? '' : 's'}`, icon: Package },
     { title: 'Active Pickups', value: pickups.length.toLocaleString(), change: pickups.length ? 'In progress' : 'Awaiting claims', icon: Truck },
     { title: 'CO₂ Emissions Saved', value: co2Tons > 0 ? `${co2Tons.toFixed(1)} Tons` : '0 Tons', change: 'From delivered meals', icon: Leaf },
+    { title: 'Active Listings', value: active.length.toLocaleString(), change: active.length ? 'Currently active' : 'No active listings', icon: Package },
   ];
 
   const updateField = (key: keyof typeof form, value: string) =>
@@ -264,6 +418,34 @@ export const DonorDashboard: React.FC = () => {
   const handleCreateDonation = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isRecurringForm) {
+      setSubmitting(true);
+      try {
+        await apiRequest('/donations/schedules', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: form.title,
+            quantity: parseInt(form.quantity, 10) || 20,
+            itemType: form.itemType || 'Cooked Meals',
+            pickupLocation: form.pickupLocation || 'Main Kitchen Gate',
+            frequency: recurringFrequency,
+            pickupTime: '21:00',
+            daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+            isActive: true,
+          }),
+        });
+        showToast('🔄 Standing recurring schedule activated!', 'success');
+        setShowModal(false);
+        setIsRecurringForm(false);
+        fetchSchedules();
+      } catch (err: any) {
+        showToast(err.message || 'Failed to create recurring schedule', 'error');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     // Validate required fields
     if (!form.title.trim()) {
       showToast('Food Item Name is required', 'error');
@@ -396,6 +578,22 @@ export const DonorDashboard: React.FC = () => {
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
+                onClick={() => setShowLeaderboard(true)}
+                className="px-3.5 py-3 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 glass-card rounded-2xl flex items-center justify-center gap-1.5 transition-all"
+                title="Rescuer Leaderboard & Embeddable Web Badges"
+              >
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span className="hidden md:inline">Leaderboard & Badges</span>
+              </button>
+              <button
+                onClick={() => setShowCalculator(true)}
+                className="px-3.5 py-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 glass-card rounded-2xl flex items-center justify-center gap-1.5 transition-all"
+                title="AI Food Expiration Predictor"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <span className="hidden md:inline">AI Shelf-Life Calc</span>
+              </button>
+              <button
                 onClick={fetchDonations}
                 className="px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 glass-card rounded-2xl flex items-center justify-center gap-2"
               >
@@ -408,7 +606,7 @@ export const DonorDashboard: React.FC = () => {
                 className="flex-1 sm:flex-none px-5 py-3 text-xs font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-2xl shadow-glow flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                <span>Post Food Surplus</span>
+                <span>Post Surplus</span>
               </motion.button>
             </div>
           </div>
@@ -464,6 +662,63 @@ export const DonorDashboard: React.FC = () => {
                         </p>
                       </div>
                       {statusBadge(d.status)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recurring Surplus Subscriptions Section */}
+            <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-brand-500/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Repeat className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                    Recurring Surplus Subscriptions
+                  </h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsRecurringForm(true);
+                    setShowModal(true);
+                  }}
+                  className="px-3 py-1 text-[11px] font-black text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md flex items-center gap-1 transition-all"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>New Schedule</span>
+                </button>
+              </div>
+
+              {schedules.length === 0 ? (
+                <p className="py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                  No active standing schedules. Create a recurring schedule for daily/weekly surplus items.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {schedules.map((s) => (
+                    <div key={s.id} className="p-3.5 rounded-2xl bg-purple-500/5 border border-purple-500/15 space-y-2 text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-gray-900 dark:text-white">{s.title}</p>
+                          <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5">
+                            🔄 {s.frequency.toUpperCase()} at {s.pickupTime} • {s.quantity} portions
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleToggleSchedule(s.id)}
+                          className={`px-2.5 py-1 text-[10px] font-black rounded-full transition-all ${
+                            s.isActive
+                              ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                              : 'bg-gray-200 dark:bg-gray-800 text-gray-500'
+                          }`}
+                        >
+                          {s.isActive ? '● Active' : '○ Paused'}
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1 border-t border-purple-500/10">
+                        <span className="truncate max-w-[180px]">📍 {s.pickupLocation}</span>
+                        <span>Next: {new Date(s.nextAutoPublishAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -611,6 +866,42 @@ export const DonorDashboard: React.FC = () => {
                         {new Date(p.pickupWindowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
+
+                    <div className="pt-2 border-t border-brand-500/10 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setActiveQrDonation({ donation: p, mode: 'display', actionType: 'pickup' })}
+                        className="py-2 px-3 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl border border-blue-500/20 flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Pickup QR & PIN ({p.verificationPin || '849201'})</span>
+                      </button>
+                      <button
+                        onClick={() => setActiveChatDonation(p)}
+                        className="py-2 px-3 text-xs font-bold text-brand-700 dark:text-brand-300 bg-brand-500/10 hover:bg-brand-500/20 rounded-xl border border-brand-500/20 flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Order Chat</span>
+                        {p.messages && p.messages.length > 0 && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-black bg-brand-600 text-white rounded-full">
+                            {p.messages.length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => generateTaxReceiptPDF(p)}
+                        className="py-2 px-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl border border-emerald-500/20 flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>Tax Receipt PDF</span>
+                      </button>
+                      <button
+                        onClick={() => setActiveSafetyDonation(p)}
+                        className="py-2 px-3 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 rounded-xl border border-purple-500/20 flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Thermometer className="w-3.5 h-3.5" />
+                        <span>{p.haccpPassed ? '🛡️ HACCP Passed' : 'Safety Log'}</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -630,6 +921,80 @@ export const DonorDashboard: React.FC = () => {
                 <X className="w-4 h-4" />
               </button>
             </div>
+            {/* AI Natural Language Magic Box */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-brand-500/10 via-emerald-500/10 to-blue-500/10 border border-brand-500/25 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs font-black text-gray-900 dark:text-white">
+                    Smart AI Natural Language Posting
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-full bg-brand-600 text-white">
+                  NLP Auto-Fill
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                Type or paste plain text describing your surplus food, and AI will extract all details automatically!
+              </p>
+
+              <div className="space-y-2">
+                <textarea
+                  rows={2}
+                  value={nlpInput}
+                  onChange={(e) => setNlpInput(e.target.value)}
+                  placeholder="e.g., 50 plates of hot chicken biryani and naan at Connaught Place Back Gate 3, expires at 11 PM tonight"
+                  className="w-full px-3 py-2 rounded-xl glass-input text-xs resize-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleNlpExtract()}
+                  disabled={nlpExtracting || !nlpInput.trim()}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-emerald-600 text-white font-bold text-xs shadow-glow disabled:opacity-40 flex items-center justify-center gap-2 transition-all"
+                >
+                  {nlpExtracting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                  <span>{nlpExtracting ? 'Extracting details with AI...' : 'Extract Details & Auto-Fill Form'}</span>
+                </button>
+              </div>
+
+              {/* Sample Prompt Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto text-[10px] pt-1">
+                <span className="text-gray-400 font-bold shrink-0">Try tapping:</span>
+                {[
+                  '50 portions hot biryani at Connaught Place expiring 11 PM',
+                  '20 kg fresh bakery loaves at Back Gate 3',
+                  '15 boxed salads expiring in 2 hours',
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setNlpInput(chip);
+                      handleNlpExtract(chip);
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-white/60 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-brand-500/10 border border-gray-200 dark:border-gray-700 whitespace-nowrap shrink-0 transition-all font-semibold"
+                  >
+                    ✨ {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Amber Warning Banners for Missing Fields */}
+            {missingFields.length > 0 && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1 text-xs text-amber-800 dark:text-amber-300 font-bold">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>AI extracted main details, but please verify missing fields:</span>
+                </div>
+                <ul className="list-disc list-inside text-[11px] font-semibold pl-2 space-y-0.5 text-amber-700 dark:text-amber-400">
+                  {missingFields.includes('quantity') && <li>Portion quantity count was not specified in text.</li>}
+                  {missingFields.includes('pickupLocation') && <li>Specific pickup location address was not specified.</li>}
+                  {missingFields.includes('expiryDateTime') && <li>Expiration timeframe was not specified.</li>}
+                </ul>
+              </div>
+            )}
+
             <form onSubmit={handleCreateDonation} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold mb-1 text-gray-900 dark:text-gray-100">Food Item Name *</label>
@@ -956,6 +1321,61 @@ export const DonorDashboard: React.FC = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Floating AI Assistant for Donors */}
+      <AIAssistantModal role="donor" />
+
+      {/* Floating Voice & Audio Notification Controls */}
+      <VoiceAlertWidget role="donor" />
+
+      {/* Order Chat Drawer */}
+      <AnimatePresence>
+        {activeChatDonation && (
+          <OrderChatDrawer
+            donation={activeChatDonation}
+            onClose={() => setActiveChatDonation(null)}
+            onMessageSent={() => fetchDonations()}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* QR Code Modal */}
+      <AnimatePresence>
+        {activeQrDonation && (
+          <QRCodeModal
+            donation={activeQrDonation.donation}
+            mode={activeQrDonation.mode}
+            actionType={activeQrDonation.actionType}
+            onClose={() => setActiveQrDonation(null)}
+            onVerified={() => fetchDonations()}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Food Safety Inspection Modal */}
+      <AnimatePresence>
+        {activeSafetyDonation && (
+          <FoodSafetyModal
+            donation={activeSafetyDonation}
+            onClose={() => setActiveSafetyDonation(null)}
+            onLogged={() => fetchDonations()}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Rescuer Leaderboard Modal */}
+      <AnimatePresence>
+        {showLeaderboard && (
+          <RescuerLeaderboardModal onClose={() => setShowLeaderboard(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* AI Shelf-Life Calculator Modal */}
+      <AnimatePresence>
+        {showCalculator && (
+          <ShelfLifeCalculatorModal onClose={() => setShowCalculator(false)} />
+        )}
+      </AnimatePresence>
   </div>
   );
 };

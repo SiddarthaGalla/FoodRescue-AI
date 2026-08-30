@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { OfflineSyncBanner } from './components/common/OfflineSyncBanner';
 
 // Public Pages
 import { Home } from './pages/Home';
@@ -32,6 +33,7 @@ export const App: React.FC = () => {
       <ToastProvider>
         <AuthProvider>
           <BrowserRouter>
+            <OfflineSyncBanner />
             <div className="flex flex-col min-h-screen">
               <Navbar />
               <div className="flex-1">

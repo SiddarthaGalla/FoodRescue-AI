@@ -1,6 +1,10 @@
 import uuid
+import os
+import json
+import re
+import urllib.request
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 from math import radians, cos, sin, sqrt, atan2
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,11 +13,26 @@ from app.db.mongodb import get_database
 from app.models.user import user_helper
 from app.models.donation import donation_helper
 from app.schemas.donation import (
-    DonationCreate, DonationUpdate, DonationResponse,
-    DonationStatus, AssignVolunteerRequest, VolunteerCreateRequest
+    DonationCreate,
+    DonationResponse,
+    DonationStatus,
+    DonationUpdate,
+    AssignVolunteerRequest,
+    VolunteerCreateRequest,
+    VolunteerLocationUpdateRequest,
+    ChatMessageCreateRequest,
+    NLPExtractRequest,
+    NLPExtractResponse,
+    VerifyPoDRequest,
+    RecurringScheduleCreate,
+    RecurringScheduleResponse,
+    FoodSafetyLogRequest,
 )
 from app.schemas.user import UserRole
 from app.api.deps import get_current_user, require_roles
+from app.core.config import settings
+
+router = APIRouter()
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -38,9 +57,11 @@ def calculate_fare(donation: dict, volunteer_lat: float, volunteer_lng: float) -
     PLATFORM_FEE = 0.10
     
     # Distance fare
-    donor_lat = donation.get("latitude", 28.6139)  # Default to Delhi if not set
-    donor_lng = donation.get("longitude", 77.2090)
-    distance_km = haversine(volunteer_lat, volunteer_lng, donor_lat, donor_lng)
+    v_lat = volunteer_lat if volunteer_lat is not None else 28.6210
+    v_lng = volunteer_lng if volunteer_lng is not None else 77.2100
+    donor_lat = donation.get("latitude") if donation.get("latitude") is not None else 28.6139
+    donor_lng = donation.get("longitude") if donation.get("longitude") is not None else 77.2090
+    distance_km = haversine(v_lat, v_lng, donor_lat, donor_lng)
     
     distance_fare = distance_km * PER_KM_RATE
     quantity_fare = donation.get("quantity", 0) * PER_PORTION_RATE
@@ -86,9 +107,113 @@ def calculate_fare(donation: dict, volunteer_lat: float, volunteer_lng: float) -
     return round(total_fare, 2), breakdown
 
 
-router = APIRouter()
-
-MOCK_DONATIONS_DB = {}
+now_base = datetime.utcnow()
+MOCK_DONATIONS_DB = {
+    "mock-don-1": {
+        "id": "mock-don-1",
+        "_id": "mock-don-1",
+        "title": "Hot Dal Rice & Roti Meal Trays",
+        "description": "Freshly prepared wholesome meals from lunch buffet. Kept hot and ready for immediate pickup.",
+        "quantity": 80,
+        "itemType": "Cooked Meals",
+        "expiryDateTime": now_base + timedelta(hours=1, minutes=30),
+        "pickupLocation": "Connaught Place Sector 3, Central New Delhi",
+        "address": "Connaught Place Sector 3, Central New Delhi",
+        "latitude": 28.6180,
+        "longitude": 77.2050,
+        "pickupWindowStart": now_base - timedelta(minutes=30),
+        "pickupWindowEnd": now_base + timedelta(hours=2),
+        "photoUrl": "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop",
+        "estimatedValue": 3.5,
+        "donorId": "mock-donor-id",
+        "donorName": "Green Harvest Bistro",
+        "status": DonationStatus.AVAILABLE.value,
+        "claimedBy": None,
+        "claimedByName": None,
+        "assignedVolunteerId": None,
+        "assignedVolunteerName": None,
+        "createdAt": now_base - timedelta(minutes=45),
+        "updatedAt": now_base - timedelta(minutes=45),
+    },
+    "mock-don-2": {
+        "id": "mock-don-2",
+        "_id": "mock-don-2",
+        "title": "Fresh Artisan Bakery Bread & Pastries",
+        "description": "Whole wheat bread loaves, croissants, and dinner rolls baked this morning.",
+        "quantity": 40,
+        "itemType": "Bakery",
+        "expiryDateTime": now_base + timedelta(hours=4),
+        "pickupLocation": "Barakhamba Road, New Delhi",
+        "address": "Barakhamba Road, New Delhi",
+        "latitude": 28.6250,
+        "longitude": 77.2150,
+        "pickupWindowStart": now_base,
+        "pickupWindowEnd": now_base + timedelta(hours=5),
+        "photoUrl": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&auto=format&fit=crop",
+        "estimatedValue": 2.0,
+        "donorId": "mock-donor-id",
+        "donorName": "Sunlit Bakery Cafe",
+        "status": DonationStatus.AVAILABLE.value,
+        "claimedBy": None,
+        "claimedByName": None,
+        "assignedVolunteerId": None,
+        "assignedVolunteerName": None,
+        "createdAt": now_base - timedelta(hours=1),
+        "updatedAt": now_base - timedelta(hours=1),
+    },
+    "mock-don-3": {
+        "id": "mock-don-3",
+        "_id": "mock-don-3",
+        "title": "Surplus Corporate Buffet Feast",
+        "description": "Paneer curry, mixed vegetable pulao, salad, and dessert cups for large shelter feeding.",
+        "quantity": 150,
+        "itemType": "Cooked Meals",
+        "expiryDateTime": now_base + timedelta(hours=2),
+        "pickupLocation": "IT Park Tower B, New Delhi",
+        "address": "IT Park Tower B, New Delhi",
+        "latitude": 28.6300,
+        "longitude": 77.2200,
+        "pickupWindowStart": now_base,
+        "pickupWindowEnd": now_base + timedelta(hours=3),
+        "photoUrl": "https://images.unsplash.com/photo-1555244162-803834f70033?w=800&auto=format&fit=crop",
+        "estimatedValue": 4.0,
+        "donorId": "mock-donor-id",
+        "donorName": "Grand Horizon Caterers",
+        "status": DonationStatus.AVAILABLE.value,
+        "claimedBy": None,
+        "claimedByName": None,
+        "assignedVolunteerId": None,
+        "assignedVolunteerName": None,
+        "createdAt": now_base - timedelta(minutes=20),
+        "updatedAt": now_base - timedelta(minutes=20),
+    },
+    "mock-don-4": {
+        "id": "mock-don-4",
+        "_id": "mock-don-4",
+        "title": "Fresh Farm Apples & Seasonal Oranges",
+        "description": "Crates of crisp apples and sweet oranges, perfect fruit for children and shelter residents.",
+        "quantity": 60,
+        "itemType": "Produce",
+        "expiryDateTime": now_base + timedelta(hours=14),
+        "pickupLocation": "Lodhi Road Market, New Delhi",
+        "address": "Lodhi Road Market, New Delhi",
+        "latitude": 28.6000,
+        "longitude": 77.1900,
+        "pickupWindowStart": now_base,
+        "pickupWindowEnd": now_base + timedelta(hours=12),
+        "photoUrl": "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=800&auto=format&fit=crop",
+        "estimatedValue": 1.5,
+        "donorId": "mock-donor-id",
+        "donorName": "Organic Farm Market",
+        "status": DonationStatus.AVAILABLE.value,
+        "claimedBy": None,
+        "claimedByName": None,
+        "assignedVolunteerId": None,
+        "assignedVolunteerName": None,
+        "createdAt": now_base - timedelta(hours=2),
+        "updatedAt": now_base - timedelta(hours=2),
+    },
+}
 
 async def _find_donation(donation_id: str):
     db = get_database()
@@ -185,6 +310,9 @@ async def create_donation(
         "pickupWindowStart": donation_in.pickupWindowStart,
         "pickupWindowEnd": donation_in.pickupWindowEnd,
         "photoUrl": donation_in.photoUrl,
+        "address": donation_in.address,
+        "latitude": donation_in.latitude,
+        "longitude": donation_in.longitude,
         "estimatedValue": donation_in.estimatedValue,
         "donorId": current_user["id"],
         "donorName": current_user.get("name"),
@@ -349,8 +477,7 @@ async def create_and_assign_volunteer(
         )
 
     # Create new volunteer user
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    from app.core.security import get_password_hash
     
     # Generate a temporary password for the volunteer
     import secrets
@@ -360,7 +487,7 @@ async def create_and_assign_volunteer(
         "name": req.name,
         "email": req.email,
         "phone": req.phone,
-        "password": pwd_context.hash(temp_password),
+        "password": get_password_hash(temp_password),
         "role": UserRole.VOLUNTEER.value,
         "profileImage": req.photoUrl,
         "address": req.address,
@@ -442,9 +569,29 @@ async def assign_volunteer(
     updated = await _get_donation_or_404(donation_id)
     return donation_helper(updated)
 
+@router.post("/{donation_id}/location", response_model=DonationResponse)
+async def update_volunteer_location(
+    donation_id: str,
+    req: VolunteerLocationUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    donation = await _get_donation_or_404(donation_id)
+    patch = {
+        "volunteerLatitude": req.latitude,
+        "volunteerLongitude": req.longitude,
+        "volunteerLocationText": req.locationText or f"{req.latitude:.4f}° N, {req.longitude:.4f}° E",
+        "volunteerLastUpdated": datetime.utcnow(),
+        "updatedAt": datetime.utcnow(),
+    }
+    _patch_donation(donation_id, patch)
+    updated = await _get_donation_or_404(donation_id)
+    return donation_helper(updated)
+
+
 @router.post("/{donation_id}/pickup", response_model=DonationResponse)
 async def mark_picked_up(
     donation_id: str,
+    location_req: Optional[VolunteerLocationUpdateRequest] = None,
     current_user: dict = Depends(get_current_user),
 ):
     donation = await _get_donation_or_404(donation_id)
@@ -460,13 +607,25 @@ async def mark_picked_up(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Only claimed donations can be marked as picked up (current: {donation.get('status')})",
         )
-    _patch_donation(donation_id, {"status": DonationStatus.PICKED_UP.value, "updatedAt": datetime.utcnow()})
+    patch = {
+        "status": DonationStatus.PICKED_UP.value,
+        "updatedAt": datetime.utcnow(),
+    }
+    if location_req:
+        patch["volunteerLatitude"] = location_req.latitude
+        patch["volunteerLongitude"] = location_req.longitude
+        patch["volunteerLocationText"] = location_req.locationText
+        patch["volunteerLastUpdated"] = datetime.utcnow()
+
+    _patch_donation(donation_id, patch)
     updated = await _get_donation_or_404(donation_id)
     return donation_helper(updated)
+
 
 @router.post("/{donation_id}/complete", response_model=DonationResponse)
 async def complete_donation(
     donation_id: str,
+    location_req: Optional[VolunteerLocationUpdateRequest] = None,
     current_user: dict = Depends(get_current_user),
 ):
     donation = await _get_donation_or_404(donation_id)
@@ -482,6 +641,305 @@ async def complete_donation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Only picked-up donations can be completed (current: {donation.get('status')})",
         )
-    _patch_donation(donation_id, {"status": DonationStatus.DELIVERED.value, "updatedAt": datetime.utcnow()})
+    patch = {
+        "status": DonationStatus.DELIVERED.value,
+        "updatedAt": datetime.utcnow(),
+    }
+    if location_req:
+        patch["volunteerLatitude"] = location_req.latitude
+        patch["volunteerLongitude"] = location_req.longitude
+        patch["volunteerLocationText"] = location_req.locationText
+        patch["volunteerLastUpdated"] = datetime.utcnow()
+
+    _patch_donation(donation_id, patch)
+    updated = await _get_donation_or_404(donation_id)
+    return donation_helper(updated)
+
+
+@router.post("/{donation_id}/messages", response_model=DonationResponse)
+async def send_order_message(
+    donation_id: str,
+    req: ChatMessageCreateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    donation = await _get_donation_or_404(donation_id)
+    msg = {
+        "id": str(uuid.uuid4()),
+        "senderId": current_user["id"],
+        "senderName": current_user.get("name") or current_user.get("email", "User"),
+        "senderRole": current_user.get("role", "user"),
+        "text": req.text.strip(),
+        "createdAt": datetime.utcnow(),
+    }
+
+    existing_msgs = list(donation.get("messages") or [])
+    existing_msgs.append(msg)
+    _patch_donation(donation_id, {"messages": existing_msgs, "updatedAt": datetime.utcnow()})
+    updated = await _get_donation_or_404(donation_id)
+    return donation_helper(updated)
+
+
+@router.get("/{donation_id}/messages")
+async def get_order_messages(
+    donation_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    donation = await _get_donation_or_404(donation_id)
+    return donation.get("messages") or []
+
+
+@router.post("/extract-nlp", response_model=NLPExtractResponse)
+async def extract_donation_details_nlp(
+    req: NLPExtractRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    NLP Natural Language Extraction Endpoint.
+    Extracts title, quantity, itemType, pickupLocation, expiryDateTime, pickupWindowEnd,
+    and identifies missing fields with guidance.
+    """
+    raw_text = req.text.strip()
+    api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY", "")
+
+    extracted = None
+    if api_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            prompt = (
+                "You are an NLP food rescue details extractor. Parse the following text into a JSON object with keys: "
+                "title (short 3-6 word summary), quantity (integer portion count or null), itemType (one of 'Cooked Meals', 'Bakery', 'Produce', 'Dairy & Prepared', 'Beverages'), "
+                "pickupLocation (street/city/landmark or null), hoursUntilExpiry (integer hours from now or null).\n"
+                "Return ONLY valid raw JSON without backticks.\n"
+                f"Text: \"{raw_text}\""
+            )
+            req_payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 300}
+            }
+            data_bytes = json.dumps(req_payload).encode("utf-8")
+            hreq = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/json"}, method="POST")
+            with urllib.request.urlopen(hreq, timeout=8) as resp:
+                if resp.status == 200:
+                    res_body = json.loads(resp.read().decode("utf-8"))
+                    cand = res_body.get("candidates", [])
+                    if cand:
+                        text_resp = cand[0].get("content", {}).get("parts", [])[0].get("text", "").strip()
+                        if text_resp.startswith("```"):
+                            text_resp = text_resp.replace("```json", "").replace("```", "").strip()
+                        extracted = json.loads(text_resp)
+        except Exception as e:
+            print(f"Gemini NLP parse warning: {e}")
+
+    # Fallback Regex Parser
+    if not extracted:
+        extracted = {}
+        qty_match = re.search(r'(\d+)\s*(?:plates|portions|meals|boxes|kg|packs|loaves|items|units)?', raw_text, re.IGNORECASE)
+        if qty_match:
+            try:
+                extracted["quantity"] = int(qty_match.group(1))
+            except Exception:
+                pass
+
+        txt_lower = raw_text.lower()
+        if any(k in txt_lower for k in ["bread", "cake", "loaf", "bakery", "pastry"]):
+            extracted["itemType"] = "Bakery"
+        elif any(k in txt_lower for k in ["apple", "fruit", "veg", "salad", "tomato", "produce"]):
+            extracted["itemType"] = "Produce"
+        elif any(k in txt_lower for k in ["milk", "cheese", "yogurt", "butter", "dairy"]):
+            extracted["itemType"] = "Dairy & Prepared"
+        elif any(k in txt_lower for k in ["juice", "water", "drink", "beverage"]):
+            extracted["itemType"] = "Beverages"
+        else:
+            extracted["itemType"] = "Cooked Meals"
+
+        exp_match = re.search(r'(\d+)\s*(?:hours|hrs|hr)', raw_text, re.IGNORECASE)
+        if exp_match:
+            try:
+                extracted["hoursUntilExpiry"] = int(exp_match.group(1))
+            except Exception:
+                pass
+
+        words = raw_text.split()
+        extracted["title"] = " ".join(words[:6]).title()
+
+    now = datetime.utcnow()
+    hrs = extracted.get("hoursUntilExpiry") or 4
+    expiry_dt = now + timedelta(hours=hrs)
+    window_start = now
+    window_end = expiry_dt - timedelta(minutes=30)
+
+    missing = []
+    if not extracted.get("quantity"):
+        missing.append("quantity")
+    if not extracted.get("pickupLocation"):
+        missing.append("pickupLocation")
+    if not extracted.get("hoursUntilExpiry") and "expire" not in raw_text.lower() and "expiry" not in raw_text.lower():
+        missing.append("expiryDateTime")
+
+    return {
+        "title": extracted.get("title") or raw_text[:40].title(),
+        "description": f"Extracted from NLP description: {raw_text}",
+        "quantity": extracted.get("quantity"),
+        "itemType": extracted.get("itemType") or "Cooked Meals",
+        "pickupLocation": extracted.get("pickupLocation"),
+        "expiryDateTime": expiry_dt.isoformat(),
+        "pickupWindowStart": window_start.isoformat(),
+        "pickupWindowEnd": window_end.isoformat(),
+        "confidenceScore": 0.95 if not missing else 0.70,
+        "missingFields": missing,
+    }
+
+
+@router.post("/{donation_id}/verify-pickup", response_model=DonationResponse)
+async def verify_pickup_pod(
+    donation_id: str,
+    req: VerifyPoDRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    donation = await _get_donation_or_404(donation_id)
+    correct_pin = donation_helper(donation).get("verificationPin")
+    correct_token = donation_helper(donation).get("qrCodeToken")
+
+    provided_pin = (req.pin or "").strip()
+    provided_qr = (req.qrCode or "").strip()
+
+    if provided_pin != correct_pin and provided_qr != correct_token and correct_pin not in provided_qr:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid QR Code or 6-digit Verification PIN for pickup",
+        )
+
+    patch = {
+        "status": DonationStatus.PICKED_UP.value,
+        "updatedAt": datetime.utcnow(),
+    }
+    _patch_donation(donation_id, patch)
+    updated = await _get_donation_or_404(donation_id)
+    return donation_helper(updated)
+
+
+@router.post("/{donation_id}/verify-delivery", response_model=DonationResponse)
+async def verify_delivery_pod(
+    donation_id: str,
+    req: VerifyPoDRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    donation = await _get_donation_or_404(donation_id)
+    correct_pin = donation_helper(donation).get("verificationPin")
+    correct_token = donation_helper(donation).get("qrCodeToken")
+
+    provided_pin = (req.pin or "").strip()
+    provided_qr = (req.qrCode or "").strip()
+
+    if provided_pin != correct_pin and provided_qr != correct_token and correct_pin not in provided_qr:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid QR Code or 6-digit Proof of Delivery (PoD) PIN",
+        )
+
+    now = datetime.utcnow()
+    patch = {
+        "status": DonationStatus.DELIVERED.value,
+        "proofOfDeliveryAt": now,
+        "updatedAt": now,
+    }
+    _patch_donation(donation_id, patch)
+    updated = await _get_donation_or_404(donation_id)
+    return donation_helper(updated)
+
+
+MOCK_SCHEDULES_DB = {
+    "sched-1": {
+        "id": "sched-1",
+        "donorId": "mock-donor-id",
+        "donorName": "Green Harvest Bistro",
+        "title": "Daily Bakery & Dinner Buffet Leftovers",
+        "quantity": 45,
+        "itemType": "Cooked Meals",
+        "pickupLocation": "Connaught Place Sector 3, Delhi",
+        "frequency": "daily",
+        "pickupTime": "21:30",
+        "daysOfWeek": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        "isActive": True,
+        "nextAutoPublishAt": datetime.utcnow() + timedelta(hours=3),
+        "createdAt": datetime.utcnow() - timedelta(days=2),
+    }
+}
+
+
+@router.get("/schedules", response_model=List[RecurringScheduleResponse])
+async def list_recurring_schedules(
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = str(current_user.get("_id", current_user.get("id")))
+    role = current_user.get("role")
+    
+    results = []
+    for s in MOCK_SCHEDULES_DB.values():
+        if role in ["admin", "ngo", "volunteer"] or s.get("donorId") == user_id:
+            results.append(s)
+    return results
+
+
+@router.post("/schedules", response_model=RecurringScheduleResponse, status_code=status.HTTP_201_CREATED)
+async def create_recurring_schedule(
+    req: RecurringScheduleCreate,
+    current_user: dict = Depends(require_roles([UserRole.DONOR, UserRole.ADMIN])),
+):
+    user_id = str(current_user.get("_id", current_user.get("id")))
+    donor_name = current_user.get("name", "Donor Partner")
+    
+    sched_id = f"sched-{uuid.uuid4().hex[:8]}"
+    now = datetime.utcnow()
+    sched = {
+        "id": sched_id,
+        "donorId": user_id,
+        "donorName": donor_name,
+        "title": req.title,
+        "quantity": req.quantity,
+        "itemType": req.itemType,
+        "pickupLocation": req.pickupLocation,
+        "frequency": req.frequency,
+        "pickupTime": req.pickupTime,
+        "daysOfWeek": req.daysOfWeek or ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        "isActive": req.isActive,
+        "nextAutoPublishAt": now + timedelta(hours=14),
+        "createdAt": now,
+    }
+    MOCK_SCHEDULES_DB[sched_id] = sched
+    return sched
+
+
+@router.patch("/schedules/{sched_id}/toggle", response_model=RecurringScheduleResponse)
+async def toggle_recurring_schedule(
+    sched_id: str,
+    current_user: dict = Depends(require_roles([UserRole.DONOR, UserRole.ADMIN])),
+):
+    if sched_id not in MOCK_SCHEDULES_DB:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    sched = MOCK_SCHEDULES_DB[sched_id]
+    sched["isActive"] = not sched["isActive"]
+    return sched
+
+
+@router.post("/{donation_id}/safety-log", response_model=DonationResponse)
+async def log_food_safety_inspection(
+    donation_id: str,
+    req: FoodSafetyLogRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    donation = await _get_donation_or_404(donation_id)
+    
+    is_safe_temp = req.temperatureCelsius <= 8.0 or req.temperatureCelsius >= 55.0
+    haccp_pass = is_safe_temp and req.containerSealVerified
+
+    now = datetime.utcnow()
+    patch = {
+        "temperatureCelsius": req.temperatureCelsius,
+        "containerSealVerified": req.containerSealVerified,
+        "haccpPassed": haccp_pass,
+        "updatedAt": now,
+    }
+    _patch_donation(donation_id, patch)
     updated = await _get_donation_or_404(donation_id)
     return donation_helper(updated)

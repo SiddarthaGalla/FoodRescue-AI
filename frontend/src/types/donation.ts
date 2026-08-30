@@ -1,5 +1,14 @@
 export type DonationStatus = 'available' | 'claimed' | 'picked_up' | 'delivered' | 'cancelled';
 
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface Donation {
   id: string;
   title: string;
@@ -12,15 +21,36 @@ export interface Donation {
   pickupWindowEnd: string;
   photoUrl?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
+  dropoffLocation?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   estimatedValue?: number;
-  donorId: string;
+  donorId?: string;
   donorName?: string;
+  donorPhone?: string;
+  temperature?: string;
+  foodSafetyPassed?: boolean;
+  claimedByNgoName?: string;
+  volunteerName?: string;
   status: DonationStatus;
   claimedBy?: string;
   claimedByName?: string;
   assignedVolunteerId?: string;
   assignedVolunteerName?: string;
+  volunteerLatitude?: number;
+  volunteerLongitude?: number;
+  volunteerLocationText?: string;
+  volunteerLastUpdated?: string;
+  messages?: ChatMessage[];
+  verificationPin?: string;
+  qrCodeToken?: string;
+  proofOfDeliveryAt?: string;
   fare?: number;
+  temperatureCelsius?: number;
+  containerSealVerified?: boolean;
+  haccpPassed?: boolean;
   fareBreakdown?: {
     base_fare: number;
     distance_km: number;
@@ -36,5 +66,5 @@ export interface Donation {
     total_fare: number;
   };
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }

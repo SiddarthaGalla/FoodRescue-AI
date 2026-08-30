@@ -30,17 +30,27 @@ def _twilio_configured() -> bool:
 def send_sms_via_twilio(to_number: str, message_body: str) -> bool:
     """Send a real SMS through Twilio. Returns True on success."""
     try:
+        formatted_number = to_number.strip()
+        if not formatted_number.startswith("+"):
+            digits = "".join(c for c in formatted_number if c.isdigit())
+            if len(digits) == 10:
+                formatted_number = f"+91{digits}"
+            else:
+                formatted_number = f"+{digits}"
+
         from twilio.rest import Client
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
         message = client.messages.create(
-            to=to_number,
+            to=formatted_number,
             from_=settings.TWILIO_FROM_NUMBER,
             body=message_body,
         )
-        logger.info("Twilio SMS queued to %s (sid=%s)", to_number, message.sid)
+        logger.info("Twilio SMS queued to %s (sid=%s)", formatted_number, message.sid)
+        print(f"[TWILIO SUCCESS] SMS sent to {formatted_number} (SID: {message.sid})")
         return True
     except Exception as e:
         logger.warning("Twilio SMS failed for %s: %s", to_number, e)
+        print(f"[TWILIO ERROR] SMS failed for {to_number}: {e}")
         return False
 
 

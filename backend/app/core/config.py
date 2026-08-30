@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""  # Project Settings -> API -> JWT Secret
 
     # Comma-separated list of email addresses that may use the admin role
-    ADMIN_EMAILS: str = "siddarthagalla@gmail.com"
+    ADMIN_EMAILS: str = "siddarthagalla@gmail.com,admin@foodrescue.org,admin@culinary.com"
 
     # SMTP email notifications (empty SMTP_* = notifications logged, not sent)
     SMTP_HOST: str = ""
@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str = ""  # Account SID from console.twilio.com
     TWILIO_AUTH_TOKEN: str = ""   # Auth Token from console.twilio.com
     TWILIO_FROM_NUMBER: str = ""  # E.164 sender, e.g. "+12345678901"
+
+    # Gemini AI Assistant API Key (free tier at https://aistudio.google.com)
+    GEMINI_API_KEY: str = ""
 
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
