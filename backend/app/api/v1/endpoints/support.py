@@ -30,13 +30,16 @@ async def create_support_request(
     req: SupportRequestIn,
     current_user: dict = Depends(get_current_user),
 ) -> Any:
-    now = datetime.utcnow()
-    support_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+    support_id = f"TIC-{str(uuid.uuid4())[:8]}"
     doc = {
+        "id": support_id,
         "subject": req.subject,
         "message": req.message,
         "userId": current_user.get("id"),
         "userEmail": current_user.get("email"),
+        "userName": current_user.get("name") or current_user.get("email"),
+        "userRole": current_user.get("role", "user"),
         "status": "open",
         "createdAt": now,
     }
@@ -45,9 +48,9 @@ async def create_support_request(
         try:
             res = await db.support_requests.insert_one(doc)
             support_id = str(res.inserted_id)
+            doc["id"] = support_id
         except Exception:
             pass
-    doc["id"] = support_id
     MOCK_SUPPORT_DB[support_id] = doc
     return {
         "id": support_id,

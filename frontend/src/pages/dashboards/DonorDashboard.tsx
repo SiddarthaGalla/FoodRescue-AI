@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, Plus, Truck, 
-  Leaf, Award, RefreshCw, MapPin, Clock, X, Receipt, Loader2,
+  Leaf, Award, RefreshCw, MapPin, Clock, X, Receipt, Loader2, LifeBuoy,
   Camera, X as XIcon, RotateCcw, AlertCircle, CheckCircle2, MapPin as MapPinIcon, MessageSquare,
   Sparkles, Wand2, AlertTriangle, QrCode, Calendar, Repeat, Volume2, Thermometer, ShieldCheck, Trophy
 } from 'lucide-react';
@@ -63,6 +63,36 @@ export const DonorDashboard: React.FC = () => {
   const [activeSafetyDonation, setActiveSafetyDonation] = useState<Donation | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportSubject, setSupportSubject] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [isSendingSupport, setIsSendingSupport] = useState(false);
+
+  const handleSendSupportRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supportSubject.trim() || !supportMessage.trim()) {
+      showToast('Please enter both subject and message', 'error');
+      return;
+    }
+    setIsSendingSupport(true);
+    try {
+      await apiRequest('/support', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: supportSubject.trim(),
+          message: supportMessage.trim(),
+        }),
+      });
+      showToast('Support ticket sent directly to Admin Dashboard inbox!', 'success');
+      setSupportSubject('');
+      setSupportMessage('');
+      setShowSupportModal(false);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to submit support request', 'error');
+    } finally {
+      setIsSendingSupport(false);
+    }
+  };
 
   // NLP Smart Natural Language State
   const [nlpInput, setNlpInput] = useState('');
@@ -592,6 +622,14 @@ const DUMMY_DONATIONS: Donation[] = [
               >
                 <Sparkles className="w-4 h-4 text-emerald-500" />
                 <span className="hidden md:inline">AI Shelf-Life Calc</span>
+              </button>
+              <button
+                onClick={() => setShowSupportModal(true)}
+                className="px-3.5 py-3 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 glass-card rounded-2xl flex items-center justify-center gap-1.5 transition-all"
+                title="Need Support / Contact Admin"
+              >
+                <LifeBuoy className="w-4 h-4 text-purple-500" />
+                <span className="hidden md:inline">Need Support</span>
               </button>
               <button
                 onClick={fetchDonations}
@@ -1376,6 +1414,64 @@ const DUMMY_DONATIONS: Donation[] = [
           <ShelfLifeCalculatorModal onClose={() => setShowCalculator(false)} />
         )}
       </AnimatePresence>
+
+      {/* Support Ticket Modal */}
+      {showSupportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-md p-6 rounded-3xl glass-card border border-purple-500/30 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-600 flex items-center justify-center">
+                  <LifeBuoy className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">Need Support / Contact Admin</h3>
+              </div>
+              <button onClick={() => setShowSupportModal(false)} className="p-1 rounded-lg text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              Submit a support request directly to the Admin Dashboard inbox.
+            </p>
+
+            <form onSubmit={handleSendSupportRequest} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold mb-1 text-gray-900 dark:text-white">Ticket Subject</label>
+                <input
+                  type="text"
+                  required
+                  value={supportSubject}
+                  onChange={(e) => setSupportSubject(e.target.value)}
+                  placeholder="e.g. Container pickup delay / Account inquiry"
+                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1 text-gray-900 dark:text-white">Message Details</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={supportMessage}
+                  onChange={(e) => setSupportMessage(e.target.value)}
+                  placeholder="Describe your issue or assistance needed..."
+                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setShowSupportModal(false)} className="w-1/3 py-2.5 rounded-xl glass-card text-xs font-bold">
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSendingSupport} className="w-2/3 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-glow flex items-center justify-center gap-1.5">
+                  {isSendingSupport ? 'Sending...' : 'Submit Support Ticket'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
   </div>
   );
 };

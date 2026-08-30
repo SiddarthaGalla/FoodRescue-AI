@@ -310,6 +310,8 @@ async def admin_support(current_user: dict = Depends(require_roles([UserRole.ADM
                     "message": t.get("message"),
                     "status": t.get("status", "open"),
                     "userEmail": t.get("userEmail"),
+                    "userName": t.get("userName"),
+                    "userRole": t.get("userRole"),
                     "createdAt": t.get("createdAt"),
                 })
             return tickets
@@ -322,6 +324,8 @@ async def admin_support(current_user: dict = Depends(require_roles([UserRole.ADM
             "message": t.get("message"),
             "status": t.get("status", "open"),
             "userEmail": t.get("userEmail"),
+            "userName": t.get("userName"),
+            "userRole": t.get("userRole"),
             "createdAt": t.get("createdAt"),
         })
     tickets.sort(key=lambda t: str(t.get("createdAt") or ""), reverse=True)

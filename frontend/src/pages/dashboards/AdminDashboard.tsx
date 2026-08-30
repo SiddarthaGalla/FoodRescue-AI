@@ -662,9 +662,16 @@ const DUMMY_ADMIN_REQUESTS: AdminRequest[] = [
                   <div key={t.id} className={`p-4 rounded-2xl border text-xs ${t.status === 'resolved' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-brand-500/5 border-brand-500/10'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-bold text-gray-900 dark:text-white truncate">{t.subject}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-gray-900 dark:text-white truncate">{t.subject}</p>
+                          {t.userRole && (
+                            <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30">
+                              {t.userRole}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                          {t.userEmail || 'Unknown user'} • {fmtDate(t.createdAt)}
+                          {t.userName ? `${t.userName} • ${t.userEmail}` : (t.userEmail || 'Unknown user')} • {fmtDate(t.createdAt)}
                         </p>
                         <p className="text-gray-700 dark:text-gray-300 mt-2 leading-relaxed">{t.message}</p>
                       </div>
