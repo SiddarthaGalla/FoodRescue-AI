@@ -399,26 +399,20 @@ export const Login: React.FC = () => {
             <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Select your role and authentication method</p>
           </div>
 
-          {/* Role Preview Selector */}
+          {/* Role Target Selector */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-[10px] font-black tracking-wider text-gray-900 dark:text-gray-100">
               <span className="uppercase">TARGET PORTAL ROLE</span>
-              {selectedRole !== 'admin' && (
-                <button
-                  type="button"
-                  onClick={() => handleInstantDemoLogin(selectedRole)}
-                  className="text-brand-600 dark:text-brand-400 hover:underline font-bold capitalize"
-                >
-                  Instant {selectedRole} Sign In &rarr;
-                </button>
-              )}
             </div>
             <div className="grid grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-900/60 border border-brand-500/20">
               {(['donor', 'ngo', 'volunteer', 'admin'] as UserRole[]).map((r) => (
                 <button
                   key={r}
                   type="button"
-                  onClick={() => handleQuickFill(r)}
+                  onClick={() => {
+                    setSelectedRole(r);
+                    setAdminAccessDenied(false);
+                  }}
                   className={`py-2 text-[10px] font-black uppercase rounded-xl transition-all ${
                     selectedRole === r
                       ? 'bg-brand-600 text-white shadow-glow'
