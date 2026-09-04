@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   LogIn, Mail, Lock, KeyRound, Leaf, CheckCircle2, Sparkles, Fingerprint,
@@ -28,6 +28,8 @@ export const Login: React.FC = () => {
   const { user, login, dummyLogin, sendOTP, loginWithOTP, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const roleParam = searchParams.get('role');
 
   const [authMode, setAuthMode] = useState<'password' | 'otp'>('password');
   
@@ -35,7 +37,11 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<UserRole>('donor');
+  const [selectedRole, setSelectedRole] = useState<UserRole>(
+    roleParam === 'admin' || roleParam === 'ngo' || roleParam === 'volunteer' || roleParam === 'donor'
+      ? roleParam
+      : 'donor'
+  );
   
   // OTP Mode State
   const [otpTarget, setOtpTarget] = useState('');

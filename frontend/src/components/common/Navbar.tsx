@@ -142,7 +142,7 @@ export const Navbar: React.FC = () => {
                     <span>Sign In</span>
                   </motion.button>
                 </Link>
-                <Link to="/register">
+                <Link to="/login">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -227,7 +227,7 @@ export const Navbar: React.FC = () => {
                       Sign In
                     </button>
                   </Link>
-                  <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
                     <button className="w-full py-3 text-xs font-black text-white bg-brand-600 rounded-xl shadow-glow">
                       Get Started
                     </button>

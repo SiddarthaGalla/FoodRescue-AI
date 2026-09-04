@@ -126,7 +126,7 @@ export const Home: React.FC = () => {
 
             {/* Responsive Action Buttons (Stacked Full Width on Phone, Inline on PC) */}
             <motion.div variants={slideUp} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1 w-full sm:w-auto">
-              <Link to="/register" className="w-full sm:w-auto">
+              <Link to="/login" className="w-full sm:w-auto">
                 <motion.button
                   variants={buttonPress}
                   whileHover="hover"
@@ -348,7 +348,7 @@ export const Home: React.FC = () => {
             </p>
           </div>
           <div className="z-10 w-full md:w-auto flex justify-center">
-            <Link to="/register" className="w-full md:w-auto">
+            <Link to="/login" className="w-full md:w-auto">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
