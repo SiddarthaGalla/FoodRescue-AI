@@ -97,7 +97,9 @@ def _domain_fallback_engine(message: str, role: str) -> str:
         "food", "rescue", "donation", "donate", "ngo", "shelter", "volunteer",
         "driver", "pickup", "delivery", "expiry", "expire", "portion", "meal",
         "tax", "co2", "route", "map", "location", "temperature", "haccp", "package",
-        "claim", "reject", "status", "dashboard", "app", "donor", "hero", "fare"
+        "claim", "reject", "status", "dashboard", "app", "donor", "hero", "fare",
+        "type", "allow", "accept", "item", "category", "can i", "what food", "cooked",
+        "produce", "bakery", "dairy", "raw", "safe", "spoiled", "meat", "veg"
     ])
 
     if any(k in msg_lower for k in off_topic_keywords) and not is_food_related:
@@ -105,13 +107,31 @@ def _domain_fallback_engine(message: str, role: str) -> str:
             "I am **RescueAI**, specialized exclusively in **FoodRescue AI**, food surplus management, "
             "and food safety guidelines. 🍱\n\n"
             "I cannot assist with off-topic subjects, but I would be glad to help you with:\n"
-            "• **Donors**: How to post surplus meals, safe packaging & tax certificates.\n"
+            "• **Donors**: How to post surplus meals, acceptable food items, safe packaging & tax certificates.\n"
             "• **NGOs**: Claiming donations, distance priority & shelter allocation.\n"
             "• **Volunteers**: Multi-stop route optimization & live driver GPS tracking."
         )
 
     # Domain Knowledge Responses
-    if "packag" in msg_lower or "container" in msg_lower or "store" in msg_lower or "temp" in msg_lower:
+    if any(k in msg_lower for k in ["what type", "what food", "type of food", "can i donate", "food allowed", "acceptable food", "what can i", "food item"]):
+        return (
+            "🥗 **Types of Food Allowed for Donation on FoodRescue AI**:\n\n"
+            "1. **Prepared & Cooked Meals**:\n"
+            "   • Buffet surplus, catering leftovers, restaurant meals, gravies, rice, rotis/breads, & pasta.\n"
+            "   • Must be untasted, untouched surplus prepared in a hygienic kitchen.\n\n"
+            "2. **Fresh Produce & Bakery**:\n"
+            "   • Fresh fruits, vegetables, salads, and leafy greens.\n"
+            "   • Bakery goods: Fresh bread, buns, rolls, and pastries.\n\n"
+            "3. **Packaged & Dairy Goods**:\n"
+            "   • Sealed packaged foods, canned goods, dry grains, pulses, and snacks.\n"
+            "   • Chilled dairy (milk, cheese, yogurt) kept continuously refrigerated (`< 4°C`).\n\n"
+            "⚠️ **Food Safety & Hygiene Requirements**:\n"
+            "• **Hot Foods**: Maintain at `> 60°C` in food-grade thermal containers.\n"
+            "• **Cold Foods**: Maintain at `< 4°C` prior to pickup.\n"
+            "• **Shelf-life**: Must have at least 1–2 hours remaining before expiry.\n\n"
+            "⛔ **Unaccepted Items**: Partially eaten food, expired goods, spoiled items, or unsealed raw meats without cold-chain control."
+        )
+    elif "packag" in msg_lower or "container" in msg_lower or "store" in msg_lower or "temp" in msg_lower or "safet" in msg_lower:
         return (
             "🍱 **Food Safety & Packaging Guidelines**:\n"
             "1. **Hot Cooked Food**: Store at `> 60°C` in food-grade insulated thermal containers.\n"
@@ -150,10 +170,11 @@ def _domain_fallback_engine(message: str, role: str) -> str:
         return (
             f"Hello! I am **RescueAI**, your assistant for **{role_title} Operations** on FoodRescue AI. 🥑\n\n"
             "How can I help you today? You can ask me about:\n"
-            "• Safe food packaging & expiry windows\n"
+            "• **What type of food can I donate?** (Prepared meals, produce, bakery, packaged goods)\n"
+            "• Safe food packaging & temperature guidelines (`> 60°C` hot / `< 4°C` cold)\n"
             "• How NGO shelter priority matching works\n"
             "• Volunteer multi-stop route optimization & GPS tracking\n"
-            "• Tax deduction receipts and platform impact statistics"
+            "• Tax deduction receipts and platform ESG impact statistics"
         )
 
 @router.post("/chat", response_model=AIChatResponse)

@@ -16,6 +16,7 @@ interface Message {
 
 const ROLE_SUGGESTIONS: Record<string, string[]> = {
   donor: [
+    'What type of food can I donate?',
     'How do I package hot cooked meals safely?',
     'How do tax deduction certificates work?',
     'What is the recommended expiry window?',
