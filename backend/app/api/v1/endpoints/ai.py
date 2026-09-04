@@ -113,7 +113,22 @@ def _domain_fallback_engine(message: str, role: str) -> str:
         )
 
     # Domain Knowledge Responses
-    if any(k in msg_lower for k in ["what type", "what food", "type of food", "can i donate", "food allowed", "acceptable food", "what can i", "food item"]):
+    if any(k in msg_lower for k in ["ways to donate", "how to donate", "how can i donate", "steps to donate", "donate food", "method of donation", "donation process"]):
+        return (
+            "🤲 **Ways & Methods to Donate on FoodRescue AI**:\n\n"
+            "1. **Instant 30-Second Food Batch Posting (Donor Dashboard)**:\n"
+            "   • Navigate to your **Donor Dashboard** and click **'Post Surplus Food Batch'**.\n"
+            "   • Capture/upload a photo of the food batch (our AI Computer Vision verifies the food and stamps live GPS geotag & timestamp).\n"
+            "   • Fill in meal title, portion count, category, pickup window, and pickup address.\n\n"
+            "2. **Scheduled Commercial Surplus Pickups**:\n"
+            "   • Hotels, catering halls, and cafeterias can set recurring daily pickup slots for surplus buffet inventory.\n\n"
+            "3. **AI Priority Matching & Dispatch**:\n"
+            "   • As soon as you post, nearby verified NGOs receive instant alerts sorted by proximity and expiry urgency.\n"
+            "   • Volunteer drivers receive multi-stop delivery dispatches to transport food safely.\n\n"
+            "4. **Monetary & Driver Support**:\n"
+            "   • Donors can sponsor driver trip payouts to ensure rapid emergency dispatch for high-volume batches."
+        )
+    elif any(k in msg_lower for k in ["what type", "what food", "type of food", "food allowed", "acceptable food", "what can i", "food item"]):
         return (
             "🥗 **Types of Food Allowed for Donation on FoodRescue AI**:\n\n"
             "1. **Prepared & Cooked Meals**:\n"
@@ -130,6 +145,31 @@ def _domain_fallback_engine(message: str, role: str) -> str:
             "• **Cold Foods**: Maintain at `< 4°C` prior to pickup.\n"
             "• **Shelf-life**: Must have at least 1–2 hours remaining before expiry.\n\n"
             "⛔ **Unaccepted Items**: Partially eaten food, expired goods, spoiled items, or unsealed raw meats without cold-chain control."
+        )
+    elif "qr" in msg_lower or "verification" in msg_lower or "code" in msg_lower or "scan" in msg_lower:
+        return (
+            "📱 **QR Code Verification System**:\n"
+            "• Each food donation batch generates a secure **Digital QR Pass**.\n"
+            "• **Pickup Phase**: Volunteer driver scans the Donor's QR code to verify batch pickup.\n"
+            "• **Delivery Phase**: NGO Shelter Manager scans the driver's QR code to confirm safe arrival and transfer."
+        )
+    elif "support" in msg_lower or "help" in msg_lower or "ticket" in msg_lower or "issue" in msg_lower or "contact" in msg_lower:
+        return (
+            "🆘 **Platform Need Support Request**:\n"
+            "• Need support requests submitted by Donors, NGOs, or Volunteers automatically route to the **Admin Control Panel**.\n"
+            "• Admins inspect live ticket logs, user details, and resolve platform issues in real time."
+        )
+    elif "chat" in msg_lower or "message" in msg_lower or "communicate" in msg_lower:
+        return (
+            "💬 **Real-time Order Chat**:\n"
+            "• Every active donation has an embedded **Order Chat**.\n"
+            "• Donors, NGO shelter staff, and assigned volunteer drivers can exchange live messages and pickup coordinates."
+        )
+    elif "offline" in msg_lower or "sync" in msg_lower or "internet" in msg_lower:
+        return (
+            "⚡ **Offline Sync & Resiliency**:\n"
+            "• If your network connection drops, FoodRescue AI queues your actions in local storage.\n"
+            "• Once reconnected, pending food listings and status updates auto-sync seamlessly."
         )
     elif "packag" in msg_lower or "container" in msg_lower or "store" in msg_lower or "temp" in msg_lower or "safet" in msg_lower:
         return (
@@ -169,12 +209,13 @@ def _domain_fallback_engine(message: str, role: str) -> str:
         role_title = role.capitalize()
         return (
             f"Hello! I am **RescueAI**, your assistant for **{role_title} Operations** on FoodRescue AI. 🥑\n\n"
-            "How can I help you today? You can ask me about:\n"
-            "• **What type of food can I donate?** (Prepared meals, produce, bakery, packaged goods)\n"
-            "• Safe food packaging & temperature guidelines (`> 60°C` hot / `< 4°C` cold)\n"
-            "• How NGO shelter priority matching works\n"
-            "• Volunteer multi-stop route optimization & GPS tracking\n"
-            "• Tax deduction receipts and platform ESG impact statistics"
+            f"I am fully trained to answer all questions about FoodRescue AI! You can ask me about:\n"
+            "• **Ways to donate**: How to post food batches, schedule commercial pickups & sponsor dispatches\n"
+            "• **Allowed food categories**: Prepared meals, fresh produce, bakery goods, and packaged items\n"
+            "• **Food safety standards**: Thermal packaging & temperature limits (`> 60°C` hot / `< 4°C` cold)\n"
+            "• **NGO shelter priority**: Proximity matching & 2-hour expiration urgency rules\n"
+            "• **Volunteer logistics**: TSP route optimization, live driver GPS, & QR code delivery verification\n"
+            "• **Platform features**: Real-time Order Chat, Support Requests, ESG Tax Deduction reports, & Dark/Light mode"
         )
 
 @router.post("/chat", response_model=AIChatResponse)
