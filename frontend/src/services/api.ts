@@ -6,7 +6,7 @@ export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = localStorage.getItem('foodrescue_token');
+  const token = sessionStorage.getItem('foodrescue_token') || localStorage.getItem('foodrescue_token');
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

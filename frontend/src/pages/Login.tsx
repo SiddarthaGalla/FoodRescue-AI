@@ -135,6 +135,8 @@ export const Login: React.FC = () => {
             // Drop any stale app session so the login page stays put
             localStorage.removeItem('foodrescue_user');
             localStorage.removeItem('foodrescue_token');
+            sessionStorage.removeItem('foodrescue_user');
+            sessionStorage.removeItem('foodrescue_token');
             setSelectedRole('admin');
             setAdminAccessDenied(true);
           } else {

@@ -66,11 +66,34 @@ const ClerkAuthSync: React.FC<{
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('foodrescue_user');
+    // Clear legacy persistent localStorage user on init to prevent auto-selecting old accounts
+    localStorage.removeItem('foodrescue_user');
+    const saved = sessionStorage.getItem('foodrescue_user');
     return saved ? JSON.parse(saved) : null;
   });
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('foodrescue_token'));
+  const [token, setToken] = useState<string | null>(() => {
+    localStorage.removeItem('foodrescue_token');
+    return sessionStorage.getItem('foodrescue_token');
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const saveAuthSession = (newToken: string, newUser: User) => {
+    setToken(newToken);
+    setUser(newUser);
+    sessionStorage.setItem('foodrescue_token', newToken);
+    sessionStorage.setItem('foodrescue_user', JSON.stringify(newUser));
+    localStorage.removeItem('foodrescue_token');
+    localStorage.removeItem('foodrescue_user');
+  };
+
+  const clearAuthSession = () => {
+    setToken(null);
+    setUser(null);
+    sessionStorage.removeItem('foodrescue_token');
+    sessionStorage.removeItem('foodrescue_user');
+    localStorage.removeItem('foodrescue_token');
+    localStorage.removeItem('foodrescue_user');
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -80,9 +103,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (mounted) setIsLoading(false);
     }, 3000);
 
-    // Restore from localStorage first (works for all auth modes)
-    const savedToken = localStorage.getItem('foodrescue_token');
-    const savedUserStr = localStorage.getItem('foodrescue_user');
+    // Restore from sessionStorage for active tab session
+    const savedToken = sessionStorage.getItem('foodrescue_token');
+    const savedUserStr = sessionStorage.getItem('foodrescue_user');
 
     const validateToken = async (token: string) => {
       try {
@@ -106,18 +129,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const validUser = await validateToken(savedToken);
           if (mounted) {
             if (!validUser) {
-              setToken(null);
-              setUser(null);
-              localStorage.removeItem('foodrescue_token');
-              localStorage.removeItem('foodrescue_user');
+              clearAuthSession();
             } else {
               // Update user with fresh data from backend
               setUser(validUser);
-              localStorage.setItem('foodrescue_user', JSON.stringify(validUser));
+              sessionStorage.setItem('foodrescue_user', JSON.stringify(validUser));
             }
           }
         } catch (e) {
-          console.warn('Failed to parse saved user from localStorage', e);
+          console.warn('Failed to parse saved user from sessionStorage', e);
         }
       } else if (mounted) {
         setIsLoading(false);
@@ -137,10 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           exchangeSupabaseSession(newPending ?? undefined).catch(console.error);
         } else if (event === 'SIGNED_OUT') {
           if (mounted) {
-            setToken(null);
-            setUser(null);
-            localStorage.removeItem('foodrescue_token');
-            localStorage.removeItem('foodrescue_user');
+            clearAuthSession();
           }
         }
       });
@@ -184,18 +201,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         : `Your account is not authorized for the ${requested} role.`;
       throw new Error(msg);
     }
-    setToken(res.access_token);
-    setUser(res.user);
-    localStorage.setItem('foodrescue_token', res.access_token);
-    localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+    saveAuthSession(res.access_token, res.user);
     return res.user.role;
   };
 
   const handleClerkSync = (clerkToken: string, clerkUserShape: User) => {
-    setToken(clerkToken);
-    setUser(clerkUserShape);
-    localStorage.setItem('foodrescue_token', clerkToken);
-    localStorage.setItem('foodrescue_user', JSON.stringify(clerkUserShape));
+    saveAuthSession(clerkToken, clerkUserShape);
   };
 
   const login = async (credentials: any): Promise<UserRole> => {
@@ -212,10 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: 'POST',
         body: JSON.stringify(credentials),
       });
-      setToken(res.access_token);
-      setUser(res.user);
-      localStorage.setItem('foodrescue_token', res.access_token);
-      localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+      saveAuthSession(res.access_token, res.user);
       return res.user.role;
     } catch (err: any) {
       throw err;
@@ -228,10 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: 'POST',
         body: JSON.stringify({ role, name }),
       });
-      setToken(res.access_token);
-      setUser(res.user);
-      localStorage.setItem('foodrescue_token', res.access_token);
-      localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+      saveAuthSession(res.access_token, res.user);
       return res.user.role;
     } catch (err: any) {
       throw err;
@@ -253,10 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    setToken(res.access_token);
-    setUser(res.user);
-    localStorage.setItem('foodrescue_token', res.access_token);
-    localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+    saveAuthSession(res.access_token, res.user);
     return res.user.role;
   };
 
@@ -287,10 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       method: 'POST',
       body: JSON.stringify({ target, otp, role, name }),
     });
-    setToken(res.access_token);
-    setUser(res.user);
-    localStorage.setItem('foodrescue_token', res.access_token);
-    localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+    saveAuthSession(res.access_token, res.user);
     return res.user.role;
   };
 
@@ -318,10 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       method: 'POST',
       body: JSON.stringify({ email, name, role, profileImage }),
     });
-    setToken(res.access_token);
-    setUser(res.user);
-    localStorage.setItem('foodrescue_token', res.access_token);
-    localStorage.setItem('foodrescue_user', JSON.stringify(res.user));
+    saveAuthSession(res.access_token, res.user);
     return res.user.role;
   };
 
@@ -329,10 +325,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (supabaseEnabled && supabase) {
       supabase.auth.signOut().catch(console.error);
     }
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('foodrescue_token');
-    localStorage.removeItem('foodrescue_user');
+    clearAuthSession();
   };
 
   return (
