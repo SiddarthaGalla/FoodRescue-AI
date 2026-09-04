@@ -188,15 +188,58 @@ export const DonorDashboard: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<any>(null);
 
-const DUMMY_DONATIONS: Donation[] = [];
+const DUMMY_DONATIONS: Donation[] = [
+  {
+    id: 'DON-MAA-01',
+    title: 'Hot Sambar Rice, Poriyal & Chapati Trays (Banquet Surplus)',
+    description: 'Freshly prepared wholesome meals from lunch buffet at T. Nagar Convention Centre. Kept in insulated thermal food containers.',
+    quantity: 120,
+    itemType: 'Prepared Meals',
+    status: 'available',
+    pickupLocation: 'Grand Palace Hotel, No. 45, South Boag Road, T. Nagar, Chennai (Geo: 13.0418° N, 80.2341° E)',
+    latitude: 13.0418,
+    longitude: 80.2341,
+    pickupWindowStart: new Date(Date.now() + 15 * 60000).toISOString(),
+    pickupWindowEnd: new Date(Date.now() + 180 * 60000).toISOString(),
+    expiryDateTime: new Date(Date.now() + 240 * 60000).toISOString(),
+    donorName: 'Grand Palace Hotel T. Nagar',
+    donorPhone: '+91 98400 12345',
+    temperature: '68°C (Safe Hot Hold)',
+    foodSafetyPassed: true,
+    photoUrl: '/images/man_with_food_chennai_1.jpg',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'DON-MAA-02',
+    title: 'Fresh South Indian Breakfast & Bakery Items',
+    description: 'Freshly baked whole wheat breads, croissants, vada & idli meal sets prepared this morning. Sealed in eco-friendly packages.',
+    quantity: 95,
+    itemType: 'Bakery Items',
+    status: 'claimed',
+    pickupLocation: 'Chennai Bakehouse, Rajiv Gandhi Salai (OMR), Sholinganallur, Chennai (Geo: 12.9010° N, 80.2279° E)',
+    latitude: 12.9010,
+    longitude: 80.2279,
+    pickupWindowStart: new Date(Date.now() - 30 * 60000).toISOString(),
+    pickupWindowEnd: new Date(Date.now() + 120 * 60000).toISOString(),
+    expiryDateTime: new Date(Date.now() + 360 * 60000).toISOString(),
+    donorName: 'Chennai Bakehouse OMR',
+    donorPhone: '+91 98411 67890',
+    temperature: '22°C (Ambient Room Temp)',
+    foodSafetyPassed: true,
+    claimedByNgoName: 'Mylapore Shelter Hub',
+    volunteerName: 'Driver Fleet #402 (Karthik R.)',
+    photoUrl: '/images/man_with_food_chennai_2.jpg',
+    createdAt: new Date(Date.now() - 60 * 60000).toISOString(),
+  }
+];
 
   const fetchDonations = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiRequest<Donation[]>('/donations');
-      setDonations(data || []);
+      setDonations(data && data.length > 0 ? data : DUMMY_DONATIONS);
     } catch (err: any) {
-      setDonations([]);
+      setDonations(DUMMY_DONATIONS);
     } finally {
       setLoading(false);
     }
