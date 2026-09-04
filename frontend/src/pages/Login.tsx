@@ -171,11 +171,14 @@ export const Login: React.FC = () => {
   useEffect(() => {
     if (supabaseEnabled) return;
 
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId) return;
+
     const initGoogleGIS = () => {
       if (window.google?.accounts?.id) {
         try {
           window.google.accounts.id.initialize({
-            client_id: "1098485292418-demo.apps.googleusercontent.com",
+            client_id: googleClientId,
             callback: (response: any) => {
               handleGoogleCredentialResponse(response);
             },
@@ -273,13 +276,14 @@ export const Login: React.FC = () => {
     }
   };
 
-  const triggerGoogleNativeOAuth = () => {
-    if (window.google?.accounts?.id) {
+  const triggerGoogleNativeOAuth = async () => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (googleClientId && window.google?.accounts?.id) {
       window.google.accounts.id.prompt((notification: any) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           if (window.google?.accounts?.oauth2) {
             const client = window.google.accounts.oauth2.initCodeClient({
-              client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '1098485292418-demo.apps.googleusercontent.com',
+              client_id: googleClientId,
               scope: 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
               ux_mode: 'popup',
               callback: (response: any) => {
@@ -288,12 +292,33 @@ export const Login: React.FC = () => {
             });
             client.requestCode();
           } else {
-            handleGoogleCredentialResponse({});
+            handleMockGoogleLogin();
           }
         }
       });
     } else {
-      handleGoogleCredentialResponse({});
+      await handleMockGoogleLogin();
+    }
+  };
+
+  const handleMockGoogleLogin = async () => {
+    setIsSubmitting(true);
+    try {
+      const assignedRole = await loginWithGoogle('google.user@foodrescue.org', 'Google User', selectedRole);
+      showToast(`Google Sign-In successful! Welcome Google User`, 'success');
+      navigate(`/dashboard/${assignedRole}`);
+    } catch (err: any) {
+      if (isAdminAccessDenied(err)) {
+        localStorage.removeItem('pendingSupabaseRole');
+        localStorage.removeItem('foodrescue_user');
+        localStorage.removeItem('foodrescue_token');
+        setSelectedRole('admin');
+        setAdminAccessDenied(true);
+      } else {
+        showToast(err.message || 'Google Auth failed', 'error');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
