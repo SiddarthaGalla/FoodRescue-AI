@@ -18,6 +18,7 @@ import { FoodSafetyModal } from '../../components/common/FoodSafetyModal';
 import { RescuerLeaderboardModal } from '../../components/common/RescuerLeaderboardModal';
 import { ShelfLifeCalculatorModal } from '../../components/common/ShelfLifeCalculatorModal';
 import { generateTaxReceiptPDF } from '../../lib/pdfReceiptGenerator';
+import { inspectGeotagPhoto, FoodDetectionResult } from '../../lib/foodDetector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { apiRequest } from '../../services/api';
@@ -182,6 +183,26 @@ export const DonorDashboard: React.FC = () => {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [photoLocation, setPhotoLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [photoAddress, setPhotoAddress] = useState<string>('');
+  const [aiFoodInspection, setAiFoodInspection] = useState<FoodDetectionResult | null>(null);
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+
+  const runFoodInspection = async (photoUrl: string) => {
+    if (!photoUrl) return;
+    setIsAnalyzingPhoto(true);
+    try {
+      const res = await inspectGeotagPhoto(photoUrl);
+      setAiFoodInspection(res);
+      if (!res.foodDetected) {
+        showToast(res.note, 'error');
+      } else {
+        showToast('AI Food Inspection Verified: Food items detected in photo!', 'success');
+      }
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setIsAnalyzingPhoto(false);
+    }
+  };
 
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
@@ -414,12 +435,14 @@ const DUMMY_DONATIONS: Donation[] = [
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       setCapturedPhoto(dataUrl);
       setForm((f) => ({ ...f, photoUrl: dataUrl }));
+      runFoodInspection(dataUrl);
       closeCamera();
     };
   };
 
   const retakePhoto = () => {
     setCapturedPhoto(null);
+    setAiFoodInspection(null);
     setForm((f) => ({ ...f, photoUrl: '' }));
   };
 
@@ -1069,7 +1092,36 @@ const DUMMY_DONATIONS: Donation[] = [
                         </button>
                       </div>
                     </div>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Person along with food should be in photo.</p>
+                    {/* AI Vision Food Inspection Result */}
+                    {isAnalyzingPhoto ? (
+                      <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] font-bold text-blue-600 flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                        <span>AI Computer Vision: Analyzing photo for food items & containers...</span>
+                      </div>
+                    ) : aiFoodInspection ? (
+                      <div className={`p-3 rounded-xl border text-xs font-bold space-y-1 ${
+                        aiFoodInspection.foodDetected
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300 animate-pulse'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-extrabold">
+                            {aiFoodInspection.foodDetected ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <AlertTriangle className="w-4 h-4 text-rose-500" />}
+                            {aiFoodInspection.note}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-md uppercase font-mono font-black bg-black/10">
+                            {aiFoodInspection.confidence}% confidence
+                          </span>
+                        </div>
+                        {!aiFoodInspection.foodDetected && (
+                          <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                            Note: Our AI model could not confirm food in this photo. Please retake photo ensuring food or containers are visible!
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Person along with food should be in photo.</p>
+                    )}
                   </div>
                 ) : (
                   <button type="button" onClick={openCamera} className="w-full py-3 px-4 rounded-xl glass-card border border-gray-300 dark:border-gray-700 hover:border-brand-500 text-xs font-black text-gray-900 dark:text-gray-100 flex items-center justify-center gap-3 transition-all shadow-sm">
