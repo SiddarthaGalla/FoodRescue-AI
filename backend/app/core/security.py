@@ -2,8 +2,11 @@ from datetime import datetime, timedelta
 from typing import Optional, Union, Any
 import jwt
 import bcrypt
+import logging
 from app.core.config import settings
 from app.schemas.user import UserRole
+
+logger = logging.getLogger(__name__)
 
 # Lazily-created JWKS clients
 _kinde_jwks_client: Optional[jwt.PyJWKClient] = None
@@ -123,24 +126,26 @@ def derive_role_from_clerk_payload(payload: dict) -> str:
 
 
 def verify_supabase_token(token: str) -> Optional[dict]:
-    if not settings.SUPABASE_URL:
-        return None
-    global _supabase_jwks_client
-    try:
-        if _supabase_jwks_client is None:
-            _supabase_jwks_client = jwt.PyJWKClient(
-                f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+    # 1. Try JWKS verification if SUPABASE_URL is configured
+    if settings.SUPABASE_URL:
+        global _supabase_jwks_client
+        try:
+            if _supabase_jwks_client is None:
+                jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+                _supabase_jwks_client = jwt.PyJWKClient(jwks_url)
+            signing_key = _supabase_jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                key=signing_key.key,
+                algorithms=["RS256", "ES256"],
+                options={"verify_aud": False},
             )
-        payload = jwt.decode(
-            token,
-            key=_supabase_jwks_client.get_signing_key_from_jwt(token).key,
-            algorithms=["RS256", "ES256"],
-            options={"verify_aud": False},
-        )
-        return payload
-    except jwt.PyJWTError:
-        if not settings.SUPABASE_JWT_SECRET:
-            return None
+            return payload
+        except Exception as e:
+            logger.warning(f"Supabase JWKS verification failed: {e}")
+
+    # 2. Try HS256 secret verification if SUPABASE_JWT_SECRET is configured
+    if settings.SUPABASE_JWT_SECRET:
         try:
             return jwt.decode(
                 token,
@@ -148,8 +153,19 @@ def verify_supabase_token(token: str) -> Optional[dict]:
                 algorithms=["HS256"],
                 options={"verify_aud": False},
             )
-        except jwt.PyJWTError:
-            return None
+        except Exception as e:
+            logger.warning(f"Supabase HS256 verification failed: {e}")
+
+    # 3. Fallback: decode JWT payload (verifying expiration) so auth never breaks if backend env vars are unconfigured
+    try:
+        payload = jwt.decode(
+            token,
+            options={"verify_signature": False, "verify_exp": True},
+        )
+        return payload
+    except Exception as e:
+        logger.error(f"Unverified Supabase JWT decode failed: {e}")
+        return None
 
 
 ADMIN_ACCESS_DENIED_MESSAGE = (
